@@ -1,0 +1,83 @@
+# Topolens — Global Configuration
+# Single source of truth for reproducibility. All scripts must import
+# values from here rather than hardcoding them.
+
+project:
+  name: "Topolens"
+  seed: 42
+
+dataset:
+  synthetic:
+    total_graphs: 2500
+    node_range: [5, 150]
+    generators:
+      erdos_renyi:
+        count: 500
+        params:
+          p: [0.05, 0.1, 0.2, 0.3]
+      barabasi_albert:
+        count: 500
+        params:
+          m: [1, 2, 3, 5]
+      watts_strogatz:
+        count: 500
+        params:
+          k: [4, 6]
+          p: [0.1, 0.3]
+      random_tree:
+        count: 500
+        params: {}
+      dense:
+        count: 500
+        node_range: [5, 100]
+        params:
+          p: [0.6, 0.8, 0.95]
+
+  split:
+    train: 0.70
+    val: 0.15
+    test: 0.15
+    stratify_by: "generator_type"
+
+  real_world:
+    source: "TUDataset"
+    datasets: ["MUTAG", "PROTEINS"]
+    root_dir: "data/raw"
+    usage: "held_out_generalization_test"  # never used in training
+
+render:
+  layout_algorithm: "spring_layout"   # fixed across entire dataset for consistency
+  image_size: [224, 224]              # matches common CNN input size
+  format: "png"
+  dpi: 100
+  node_size: 50
+  edge_width: 1.0
+  background_color: "white"
+
+model:
+  cnn:
+    architecture: "custom_cnn"        # or "resnet18_finetune"
+    input_size: [224, 224]
+    outputs: ["num_vertices", "num_edges"]
+    batch_size: 32
+    epochs: 30
+    learning_rate: 0.001
+    optimizer: "adam"
+    loss: "mse"
+
+  baseline:
+    type: "gcn"                       # or "graph_statistic_heuristic"
+    layers: 3
+    hidden_dim: 64
+
+evaluation:
+  metrics: ["mae", "rmse"]
+  breakdown_by: ["generator_type", "density_bucket"]
+
+paths:
+  data_processed: "data/processed/labels.csv"
+  data_splits: "data/splits/"
+  data_images: "data/images/"
+  checkpoints: "models/checkpoints/"
+  results: "evaluation/results/"
+  report_figures: "report/figures/"
