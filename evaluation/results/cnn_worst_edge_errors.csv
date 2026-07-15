@@ -1,0 +1,11 @@
+split,graph_id,generator,tier,density,num_nodes,pred_num_vertices,num_edges,pred_num_edges,abs_edge_error
+test,syn_dense_large_0069,dense,large,0.5782,99,0,2805,0,2805
+test,syn_dense_large_0055,dense,large,0.6765,85,0,2415,0,2415
+test,syn_dense_large_0041,dense,large,0.5587,93,0,2390,0,2390
+test,syn_dense_large_0122,dense,large,0.6766,80,0,2138,0,2138
+test,syn_dense_large_0014,dense,large,0.6582,80,0,2080,0,2080
+test,syn_dense_large_0034,dense,large,0.637,81,0,2064,0,2064
+test,syn_dense_large_0073,dense,large,0.5294,82,0,1758,0,1758
+test,syn_dense_large_0043,dense,large,0.6733,70,0,1626,0,1626
+test,syn_dense_large_0027,dense,large,0.5395,78,0,1620,1,1619
+test,syn_dense_large_0038,dense,large,0.4889,80,0,1545,0,1545
