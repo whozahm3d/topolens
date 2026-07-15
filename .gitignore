@@ -4,6 +4,9 @@ venv/
 .venv/
 models/checkpoints/*.pt
 models/checkpoints/*.pth
+data/images/
+data/raw/
+data/splits/
 .ipynb_checkpoints/
 .env
 .vscode/
