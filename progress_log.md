@@ -1,0 +1,249 @@
+# Topolens — Progress Log
+
+This is the narrative record of the project: what was done each day, how it
+was done, and — critically — *why* each decision was made. It's meant to
+read as the story of the project, useful for status updates, the final
+report's methodology section, and for anyone (including future-me) trying
+to understand the reasoning behind a choice months later.
+
+For granular technical detail — exact bugs hit, exact numbers, what broke
+and how it was fixed — see `report/log.md`. This document stays at the
+reasoning level; that one stays at the debugging level.
+
+---
+
+## Day 1 — 13 Jul 2026 — Project Setup & Planning
+
+### Goal
+
+Go from "I've been assigned this project" to a fully scoped plan with a
+working environment and a committed skeleton, so that Day 2 could start
+writing pipeline code immediately instead of still making design decisions.
+
+### What was done
+
+- Installed Python and Git, initialized the GitHub repository
+  (`github.com/whozahm3d/topolens`).
+- Finalized the project scope and dataset strategy: a **primary synthetic
+  dataset** generated via NetworkX (Erdős–Rényi, Barabási–Albert,
+  Watts–Strogatz, random trees, dense/near-complete graphs), and a
+  **secondary real-world validation set** from the TU Dortmund benchmark
+  collection (MUTAG / PROTEINS).
+- Created the full project folder structure (`data/`, `render/`,
+  `models/`, `evaluation/`, `notebooks/`, `app/`, `report/`) and pushed it
+  to GitHub.
+- Wrote and committed `config.yaml` (centralized seed, dataset, rendering,
+  and model parameters), `README.md`, and `requirements.txt`.
+- Set up the Python environment (Anaconda base env), resolved package
+  installation/version conflicts, and verified all core libraries import
+  correctly: PyTorch 2.11.0 (CPU), torch-geometric 2.8.0, NetworkX,
+  Streamlit, Gradio.
+
+### How
+
+Plan-first: the scope, dataset strategy, and folder layout were all decided
+*before* any pipeline code was written, so that Day 2 onward could be pure
+implementation against a fixed plan rather than design-while-coding.
+`config.yaml` was written as the intended single source of truth for every
+tunable parameter (seed, node ranges, generator params, image size, model
+architecture, hyperparameters) specifically so that no script would
+hardcode a value that later needs to change in five places at once.
+
+### Why
+
+**Why a CNN on rendered images at all, instead of a GNN?** This is the
+core research question the whole project is built around, and it was
+locked in on Day 1 because it shapes every downstream decision. GNNs
+consume graph structure directly — adjacency, node/edge features — via
+message passing, which is the "native" way to reason about a graph. A CNN
+looking at a rendered image gets none of that; it only sees pixels
+produced by a layout algorithm's spatial arrangement of dots and lines.
+The interesting question is exactly *how much* structural information
+survives that projection from graph → 2D layout → pixels, and whether a
+generic vision model can recover it. That's not a weaker or "lesser"
+approach to apologize for — it's a deliberate contrast to the graph-native
+literature, and it has a real-world analogue: plenty of situations only
+ever produce a graph as an image (a diagram, a scanned figure, a
+visualization with no underlying data file), and the question of whether
+useful structural counts can still be recovered from that image alone is
+genuinely useful to answer.
+
+**Why a dual dataset (synthetic + real) instead of just one?**
+
+- *Synthetic (NetworkX generators)* gives exact, unambiguous ground truth
+  for every graph (no labeling noise) and lets the dataset be built with
+  deliberately balanced coverage across structural regimes — sparse vs.
+  dense, tree-like vs. clustered vs. random, tiny vs. large — which a
+  regression model needs to generalize rather than overfit to one
+  distribution. The supervisor explicitly greenlit a self-generated
+  dataset as long as the ground truth is accurate, which synthetic
+  generation trivially satisfies.
+- *Real-world (MUTAG/PROTEINS)* exists to test whether patterns learned on
+  synthetic, randomly-generated graphs transfer to organic graphs with
+  their own structural regularities (molecular valence constraints for
+  MUTAG, protein contact-map structure for PROTEINS) that generic random
+  graph models don't reproduce. It's configured as a held-out
+  generalization test — never used in training — specifically so it stays
+  a clean measure of external validity rather than becoming part of the
+  training distribution.
+
+**Why centralize everything in `config.yaml` upfront?** Because the
+project is being framed as research-style (methodology, reproducibility,
+a Limitations section), not a one-off script. Fixed seeds and
+non-hardcoded parameters are what make results reproducible and what let
+later phases (model architecture, hyperparameters) change without
+touching the data-generation code.
+
+### Issues
+
+None blocking — package/version resolution took some trial and error but
+didn't stall the timeline.
+
+### Next
+
+Move from planning into Phase 1 implementation: generate the synthetic
+graphs, load the real datasets, build the rendering pipeline.
+
+---
+
+## Day 2 — 14 Jul 2026 — Dataset Generation & Rendering (Phase 1)
+
+### Goal
+
+Produce a complete, validated, labeled image dataset — the input every
+later phase depends on — and confirm it's correct before building
+anything on top of it.
+
+### What was done
+
+- Generated the full synthetic dataset: 2,500 graphs across 5 generator
+  families (Erdős–Rényi, Barabási–Albert, Watts–Strogatz, random trees,
+  dense) × 4 node-count tiers, 125 graphs per cell.
+- Loaded and converted MUTAG (188 graphs) and PROTEINS (1,113 graphs) via
+  PyTorch Geometric, stripped down to plain topology (no node/edge
+  features — Topolens only cares about structure).
+- Rendered all 3,801 graphs to 224×224 PNGs via the NetworkX/Graphviz/
+  matplotlib pipeline, with a Graphviz sfdp → pydot → NetworkX
+  spring-layout fallback chain.
+- Curated and exported ~24 diverse graphs (spanning generators, tiers, and
+  both real datasets) to `data/gephi_demo/` for manual, presentation-
+  quality rendering in Gephi.
+- Ran `validate_dataset.py` — confirmed every image exists, is the correct
+  resolution, and matches its GraphML node/edge counts. **PASS.**
+- Fixed bugs in and ran the dataset sanity-check notebook
+  (`01_dataset_sanity_check.ipynb`): node/edge distribution histograms,
+  per-generator breakdowns, tier balance chart, and a 12-image sample
+  render grid — saved to `report/figures/`.
+- Pushed the full dataset and code to GitHub in batched commits (Antigravity
+  IDE hit its weekly quota mid-environment-setup, so the pipeline was run
+  and debugged manually via terminal instead of through the agentic IDE).
+
+### How
+
+Each graph — synthetic or real — gets a deterministic seed derived from a
+SHA-256 hash of its own `graph_id`, so any single graph or the entire
+dataset can be regenerated byte-for-byte identically later. Rendering is
+fully scripted (`render_graphs.py`) rather than done by hand, so it can run
+unattended across thousands of graphs and stay reproducible. A validation
+pass (`validate_dataset.py`) runs as a separate, cheap step *before* any
+training happens, specifically to catch integrity bugs — missing images,
+wrong resolution, GraphML/CSV mismatches — while they're still cheap to
+diagnose, rather than discovering them as a mysterious training-time
+failure.
+
+### Why
+
+**Why these five generator families specifically?** They're not arbitrary
+— together they cover the major structural regimes graphs can take: ER for
+uniformly random connectivity, BA for scale-free/preferential-attachment
+structure (hub-and-spoke), WS for small-world clustering, random trees for
+the sparsest possible connected structure (exactly n−1 edges, no cycles),
+and dense ER for the near-complete end of the spectrum. A CNN that only
+ever saw one of these would tell us nothing about whether visual inference
+generalizes across topology types — the whole point is breadth.
+
+**Why a hybrid rendering approach (scripted NetworkX/Graphviz for the bulk,
+Gephi for a curated subset) instead of just one tool?** Bulk generation of
+3,800+ images needs to be scriptable, deterministic, and unattended —
+Gephi is an interactive desktop tool, not something you bulk-automate
+3,801 times. But Gephi produces visually polished, presentation-grade
+layouts that are worth having for a handful of report figures. So the
+split plays to each tool's strength: NetworkX/Graphviz/matplotlib for
+everything that needs to be reproducible at scale, Gephi for the ~24
+samples that need to look good in a write-up. This also happens to align
+with what the supervisor was implicitly pointing at when they referenced
+existing graph-to-image tooling — this is that ecosystem (Gephi/Graphviz/
+NetworkX), used deliberately rather than reinvented.
+
+**Why the Graphviz → pydot → spring-layout fallback chain?** Graphviz's
+`sfdp` algorithm generally produces cleaner, less-cluttered layouts than
+NetworkX's default spring layout, especially as graphs get larger — fewer
+overlapping nodes, fewer crossing edges. It was the intended primary
+layout. The fallback chain exists purely for robustness in case Graphviz
+isn't installed on a given machine. That's exactly what happened here —
+Graphviz binaries weren't on PATH, so all 3,801 images fell back to
+NetworkX spring layout. This is flagged as an open item (see below), not
+silently accepted.
+
+**Why the `node_size = max(15, 4000/n)` scaling in the render script?**
+Without inverse scaling by node count, a 600-node graph would render as an
+illegible smear of overlapping circles, and a 5-node graph would render as
+near-invisible dots. Scaling node size down as `n` grows keeps every image
+legible across the full 4–620 node range. The tradeoff — flagged directly
+in the render code — is that this makes visual node *density* a near-direct
+function of `n`, which means the CNN could in principle learn to estimate
+vertex count largely from "how much of the image is covered by dots"
+rather than from reading actual structural cues like branching or
+clustering. That's a shortcut-learning risk worth explicitly testing for
+in the Phase 3 analysis (e.g., checking whether edge-count accuracy holds
+up on graphs with similar `n` but very different densities).
+
+**Why a fifth "xlarge" tier that isn't in the original 4-tier config?**
+The synthetic generator is capped at 100 nodes by design (`config.py`'s
+`NODE_TIERS`), but PROTEINS contains real graphs up to 620 nodes. Rather
+than silently lumping those into "large" or excluding them, they're
+tagged as a distinct "xlarge" tier — used only by the real-data loader —
+so Phase 2/3 analysis can explicitly see and reason about out-of-
+distribution performance instead of it being invisible in the tier
+breakdown.
+
+**Why validate before training, and why a dedicated sanity-check notebook?**
+A validation pass is cheap (seconds) compared to a wasted training run
+(hours), so it runs as its own gate. The notebook exists for a different
+reason: visual/statistical confirmation that the dataset actually looks
+right — balanced tiers, sane distributions, legible renders — and to
+produce the exact figures (`report/figures/`) that the final report's
+methodology section will need. Both are about catching problems, and
+generating evidence, before the expensive part of the project starts.
+
+### Issues
+
+- **No layout diversity yet.** All 3,801 images used the NetworkX
+  spring-layout fallback rather than the intended Graphviz sfdp, because
+  Graphviz wasn't available on this machine. Options going into Phase 2:
+  fix the Graphviz install and re-render for layout diversity, or treat
+  single-layout as a controlled variable and write it up as an explicit
+  Limitation.
+- **PROTEINS distribution skew.** 67 "xlarge" graphs (>100 nodes, up to
+  620) sit well outside the synthetic training range. Needs a decision:
+  exclude from training, or keep in as a deliberate generalization test
+  (config already marks TU-Dortmund data as held-out/never-trained-on,
+  which leans toward the latter).
+- **`config.py` vs `config.yaml`.** Two config files exist with
+  overlapping but non-identical settings. All Phase 1 scripts import
+  `config.py` (the simpler one); `config.yaml` — despite being described
+  as the single source of truth — currently isn't read by any code, and
+  it's the only place model/training hyperparameters live. Needs
+  resolving before Phase 2 training code is written.
+
+### Next
+
+Phase 2: CNN regression model + GNN/graph-statistic baseline, trained on
+the synthetic split and evaluated (including held-out) against MUTAG/
+PROTEINS.
+
+---
+
+## Day 3 — 15 Jul 2026 — Phase 2: CNN Training + GNN Baseline
+
+*(in progress — entry to be filled in as the day's work happens)*
