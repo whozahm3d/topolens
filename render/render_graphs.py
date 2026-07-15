@@ -16,6 +16,7 @@ from tqdm import tqdm
 # Add project root to path to import config
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import config
+from topolens_utils import compute_density, density_bucket, ensure_dir
 
 
 def seed_from_id(graph_id: str) -> int:
@@ -195,6 +196,9 @@ def curate_and_export_gephi(metadata_list):
 def main():
     print("Starting rendering pipeline...")
     os.makedirs(config.IMAGES_DIR, exist_ok=True)
+    processed_dir = os.path.dirname(config.PROCESSED_LABELS_CSV)
+    if processed_dir:
+        ensure_dir(processed_dir)
     
     graph_files = find_graph_files()
     if not graph_files:
@@ -253,10 +257,20 @@ def main():
         
     pbar.close()
     
-    # Save labels.csv
     df = pd.DataFrame(metadata_list)
-    df.to_csv(config.LABELS_CSV, index=False)
-    print(f"Successfully saved rendering metadata to {config.LABELS_CSV}")
+    # Save only the processed labels artifact for downstream training/evaluation.
+    processed_df = df.copy()
+    processed_df["density"] = processed_df.apply(
+        lambda row: compute_density(int(row["num_nodes"]), int(row["num_edges"])),
+        axis=1,
+    )
+    processed_df["density_bucket"] = processed_df["density"].map(density_bucket)
+    processed_df.to_csv(config.PROCESSED_LABELS_CSV, index=False)
+    print(f"Successfully saved processed labels to {config.PROCESSED_LABELS_CSV}")
+
+    # Remove the legacy labels.csv if it exists so there is a single canonical labels file.
+    if os.path.exists(config.LABELS_CSV):
+        os.remove(config.LABELS_CSV)
     
     # Print layout statistics
     layout_stats = df["layout_algorithm"].value_counts()

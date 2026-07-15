@@ -46,7 +46,7 @@ dataset:
     usage: "held_out_generalization_test"  # never used in training
 
 render:
-  layout_algorithm: "spring_layout"   # fixed across entire dataset for consistency
+  layout_algorithm: "graphviz_sfdp"   # Graphviz sfdp is the intended render backend for Phase 2
   image_size: [224, 224]              # matches common CNN input size
   format: "png"
   dpi: 100
@@ -69,13 +69,14 @@ model:
     type: "gcn"                       # or "graph_statistic_heuristic"
     layers: 3
     hidden_dim: 64
+    epochs: 30
 
 evaluation:
   metrics: ["mae", "rmse"]
   breakdown_by: ["generator_type", "density_bucket"]
 
 paths:
-  data_processed: "data/processed/labels.csv"
+  data_processed: "data/processed/labels_processed.csv"
   data_splits: "data/splits/"
   data_images: "data/images/"
   checkpoints: "models/checkpoints/"

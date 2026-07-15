@@ -22,6 +22,9 @@ RAW_SYNTHETIC_DIR = "data/raw/synthetic"
 RAW_REAL_DIR = "data/raw/real"
 IMAGES_DIR = "data/images"
 GEPHI_DEMO_DIR = "data/gephi_demo"
+# Legacy path — kept only so render_graphs.py can detect and delete the old
+# file on re-render. Do not use this for reading labels; use PROCESSED_LABELS_CSV.
 LABELS_CSV = "data/labels.csv"
+PROCESSED_LABELS_CSV = "data/processed/labels_processed.csv"
 
 TU_DATASETS = ["MUTAG", "PROTEINS"]

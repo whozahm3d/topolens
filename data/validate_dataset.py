@@ -15,12 +15,15 @@ import config
 def validate_dataset():
     print("Starting dataset validation...")
     
-    if not os.path.exists(config.LABELS_CSV):
-        print(f"Error: {config.LABELS_CSV} does not exist. Run rendering script first.")
+    labels_csv = getattr(config, "PROCESSED_LABELS_CSV", config.LABELS_CSV)
+    if not os.path.exists(labels_csv):
+        labels_csv = config.LABELS_CSV
+    if not os.path.exists(labels_csv):
+        print(f"Error: {labels_csv} does not exist. Run rendering script first.")
         sys.exit(1)
-        
+
     try:
-        df = pd.read_csv(config.LABELS_CSV)
+        df = pd.read_csv(labels_csv)
     except Exception as e:
         print(f"Error reading labels.csv: {e}")
         sys.exit(1)
