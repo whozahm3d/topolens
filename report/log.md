@@ -18,7 +18,7 @@
     graph) — expected given the sampling range, not a bug
 - data/gephi_demo/: 24 curated GraphML files exported for manual layout.
 
-# 2026-07-15 â€” Phase 2: Graphviz + training/eval scaffolding
+# 2026-07-15 - Phase 2: Graphviz + training/eval scaffolding
 
 - Installed Graphviz into `E:\Anaconda\envs\py-dev` so `sfdp` is available on Windows again.
 - Verified `sfdp -V` works from the conda environment and confirmed the render pipeline can reach `graphviz_sfdp` instead of the old spring-layout fallback.
@@ -28,3 +28,50 @@
 - Added Phase 2 split, dataset, CNN, GNN, baseline, evaluation, and error-analysis scripts under `data/`, `models/`, and `evaluation/`.
 - Added a Phase 2 notebook workbook in `notebooks/` so the pipeline can be run and tested interactively like Phase 1.
 - Expanded the Phase 2 notebook with inline charts, rendered image previews, model prediction tables, held-out breakdowns, and layout verification output so it doubles as a results dashboard.
+
+# 2026-07-16 — Phase 2: full training on Colab GPU + GCN pooling bug fix
+
+- Ran the full 30-epoch training for both models on Colab (T4 GPU), replacing the
+  2-epoch smoke-test checkpoints that all prior evaluation numbers were based on.
+  CPU projection had estimated ~5 hours for the CNN alone; the GPU run for both
+  models combined took ~6-7 minutes.
+- CNN converged cleanly: train_loss 1.32 → 0.12, best val_loss 0.023. Test overall
+  MAE dropped from 35.76 (smoke-test, effectively predicting near-zero for every
+  graph) to 2.5-3.5 for vertices and 22.8-33 for edges.
+- GCN converged during training (val_loss down to ~0.92-1.0) but the first full
+  evaluation surfaced a real bug, not just undertraining: held-out MAE exploded
+  into the thousands (PROTEINS edges MAE 4,570; sparse-bucket edges MAE 7,452),
+  while the CNN and the GCN's own in-distribution test-split numbers stayed sane.
+  Root cause: node features were raw, unnormalized degree values, pooled into a
+  graph embedding via `global_add_pool` (sum). Held-out real graphs (PROTEINS, up
+  to several hundred nodes) sit well outside the synthetic training distribution's
+  size range, so the summed embedding pushed the regression head into
+  extrapolation, and since predictions are decoded via expm1 (log1p-trained
+  targets), even a moderate log-space error exploded multiplicatively once
+  converted back to real counts.
+- Fix: switched `global_add_pool` to `global_mean_pool` in `GraphCountGCN.forward`,
+  and normalized the per-node degree feature by each graph's max degree in
+  `graphml_to_pyg_data` (`models/gnn_baseline.py`). Both `evaluate.py` and
+  `error_analysis.py` import these directly, so no other files needed changes.
+- First attempt at applying this fix was lost when the Colab runtime was
+  discarded before the commit went through; the notebook was rerun from a fresh
+  clone (images, splits, and processed labels came in correctly from the
+  already-committed repo — re-rendering was started once as a precaution but
+  cancelled after ~10 minutes once confirmed unnecessary, since Graphviz output
+  is deterministic and already matched what was in git). The fix was reapplied
+  before this training run, and confirmed in the file before committing.
+- Retrained the GCN only (CNN checkpoint unaffected). Held-out sparse-bucket
+  edges MAE dropped from 7,452 to 61.9; PROTEINS edges MAE dropped from 4,570 to
+  32.5, vertices MAE from 3,134 to 9.96.
+- Known tradeoff: mean-pooling removes the implicit "sum acts like a node-count
+  signal" that sum-pooling provided, so the GCN is now stable but consistently
+  less accurate than the CNN across every breakdown (e.g. dense-bucket edges MAE:
+  CNN ~1.6 vs GCN ~76). Acceptable for a baseline comparison model. Possible
+  follow-up: concatenate `num_nodes` as an explicit scalar feature before the
+  head, giving the model a direct size signal instead of inferring it from
+  pooled degree statistics.
+- `cnn_worst_edge_errors.csv` no longer shows the CNN predicting 0 for every
+  large graph (previous symptom of the smoke-test-only checkpoint) — predictions
+  are now in the correct order of magnitude even on the largest test graphs.
+- Committed and pushed from Colab directly (GitHub PAT stored via Colab
+  Secrets, not hardcoded in the notebook). Commit 288a4c5.
