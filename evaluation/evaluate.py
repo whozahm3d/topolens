@@ -17,6 +17,7 @@ import config
 from models.cnn_model import CustomCNNRegressor
 from models.dataset import TopolensImageDataset
 from models.gnn_baseline import GraphCountGCN, graphml_to_pyg_data
+from models.graph_statistic_baseline import build_density_table, predict_edges
 from topolens_utils import ensure_dir, load_yaml_config
 
 try:
@@ -149,9 +150,13 @@ def predict_gnn(split_csv: Path, model):
     raw_outputs = torch.cat(outputs, dim=0)
     return safe_counts(raw_outputs.numpy())
 
-
-def predict_graph_statistic(df: pd.DataFrame) -> np.ndarray:
-    return df[["num_nodes", "num_edges"]].to_numpy(dtype=np.int64)
+def predict_graph_statistic(df: pd.DataFrame, density_table: dict, fallback_density: float) -> np.ndarray:
+    preds = []
+    for _, row in df.iterrows():
+        num_nodes = int(row["num_nodes"])
+        pred_edges = predict_edges(num_nodes, row["generator"], density_table, fallback_density)
+        preds.append((num_nodes, pred_edges))
+    return np.array(preds, dtype=np.int64)
 
 
 def maybe_alias_breakdown(name: str) -> str:
@@ -181,6 +186,7 @@ def main() -> None:
 
     model_cnn, normalize_stats = load_cnn_model(cnn_checkpoint)
     model_gnn = load_gnn_model(gnn_checkpoint)
+    density_table, fallback_density = build_density_table(Path(config.DATA_DIR) / "splits" / "train.csv")
 
     cnn_tables = []
     gnn_tables = []
@@ -189,7 +195,7 @@ def main() -> None:
     for split_name, df in splits.items():
         cnn_preds = predict_cnn(Path(config.DATA_DIR) / "splits" / f"{split_name}.csv", normalize_stats, model_cnn)
         gnn_preds = predict_gnn(Path(config.DATA_DIR) / "splits" / f"{split_name}.csv", model_gnn)
-        baseline_preds = predict_graph_statistic(df)
+        baseline_preds = predict_graph_statistic(df, density_table, fallback_density)
 
         cnn_tables.append(pd.DataFrame(metrics_records("cnn", split_name, df, cnn_preds)))
         gnn_tables.append(pd.DataFrame(metrics_records("gcn", split_name, df, gnn_preds)))

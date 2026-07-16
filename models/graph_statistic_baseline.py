@@ -1,4 +1,11 @@
-"""Direct graph-statistic baseline that predicts counts from GraphML."""
+"""Graph-statistic heuristic baseline: exact node count (structurally
+trivial to observe) + a non-learned density-formula estimate for edges.
+
+Edge predictions come from a per-generator average density, computed once
+from the TRAIN split only, applied to the observed node count:
+pred_edges ~= density * N * (N-1) / 2. The real edge count for the graph
+being predicted is never read.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +13,6 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import networkx as nx
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -14,10 +20,23 @@ import config
 from topolens_utils import ensure_dir
 
 
-def predict_from_graphml(graph_path: str | Path) -> tuple[int, int]:
-    """Return the exact node and edge counts from a GraphML file."""
-    graph = nx.read_graphml(graph_path)
-    return graph.number_of_nodes(), graph.number_of_edges()
+def build_density_table(train_csv: Path) -> tuple[dict[str, float], float]:
+    """Return {generator: mean_density} from TRAIN only, plus a global fallback.
+
+    The fallback covers generators with no training rows (MUTAG, PROTEINS
+    only ever appear in held_out).
+    """
+    train_df = pd.read_csv(train_csv)
+    per_generator = train_df.groupby("generator")["density"].mean().to_dict()
+    global_fallback = float(train_df["density"].mean())
+    return per_generator, global_fallback
+
+
+def predict_edges(num_nodes: int, generator: str, density_table: dict[str, float], fallback_density: float) -> int:
+    """Estimate edge count from node count + a training-derived average density."""
+    density = density_table.get(generator, fallback_density)
+    max_possible_edges = num_nodes * (num_nodes - 1) / 2
+    return int(round(density * max_possible_edges))
 
 
 def load_rows(csv_path: Path) -> pd.DataFrame:
@@ -31,14 +50,17 @@ def main() -> None:
     test_df = load_rows(data_dir / "test.csv")
     held_out_df = load_rows(data_dir / "held_out.csv")
 
+    density_table, fallback_density = build_density_table(data_dir / "train.csv")
+
     rows = []
     for split_name, split_df in (("test", test_df), ("held_out", held_out_df)):
         for _, row in split_df.iterrows():
-            pred_nodes, pred_edges = predict_from_graphml(row["graph_path"])
+            num_nodes = int(row["num_nodes"])
+            pred_edges = predict_edges(num_nodes, row["generator"], density_table, fallback_density)
             rows.append(
                 {
                     "graph_id": row["graph_id"],
-                    "pred_num_vertices": pred_nodes,
+                    "pred_num_vertices": num_nodes,
                     "pred_num_edges": pred_edges,
                 }
             )
