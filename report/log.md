@@ -1,4 +1,19 @@
 
+# 2026-07-13 — Project Setup & Planning
+
+- Installed Python and Git, initialized GitHub repository (github.com/whozahm3d/topolens)
+- Finalized project scope and dataset strategy: primary dataset is synthetic graphs
+  via NetworkX generators (Erdős–Rényi, Barabási–Albert, Watts–Strogatz, random
+  trees, dense/near-complete graphs); secondary dataset is TU Dortmund benchmark
+  (MUTAG/PROTEINS) for real-world validation
+- Created full project folder structure (data, render, models, evaluation,
+  notebooks, app, report) and pushed to GitHub
+- Wrote and committed config.yaml (centralized seed, dataset, rendering, and
+  model parameters), README.md, and requirements.txt
+- Set up Python environment (Anaconda base env), resolved package
+  installation/version issues, and verified all core libraries import correctly:
+  PyTorch 2.11.0 (CPU), torch-geometric 2.8.0, NetworkX, Streamlit, Gradio
+
 # 2026-07-14 — Phase 1: dataset generation + rendering
 
 - Generated 2500 synthetic graphs (5 generators × 4 tiers × 125 each)
