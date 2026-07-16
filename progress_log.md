@@ -246,4 +246,101 @@ PROTEINS.
 
 ## Day 3 — 15 Jul 2026 — Phase 2: CNN Training + GNN Baseline
 
-*(in progress — entry to be filled in as the day's work happens)*
+### Goal
+
+Unblock the layout-diversity gap flagged at the end of Day 2, and get
+Phase 2's full pipeline (splits, CNN, GNN baseline, graph-statistic
+baseline, evaluation) scaffolded and runnable before any GPU training
+happens.
+
+### What was done
+
+- Installed Graphviz into the conda environment and confirmed `sfdp` is
+  reachable, unblocking the render pipeline from the NetworkX spring-layout
+  fallback.
+- Deferred the actual full re-render (CPU-bound, slow on this machine) —
+  scaffolding Phase 2 code first didn't depend on it.
+- Simplified `render_graphs.py` to emit a single canonical labels artifact.
+- Added the full Phase 2 script set (splits, dataset loader, CNN model,
+  GNN baseline, graph-statistic baseline, evaluate, error-analysis) and a
+  Phase 2 notebook doubling as an interactive results dashboard.
+
+### How
+
+Scaffolded CNN and GNN code side by side rather than building the CNN
+pipeline first and bolting the GNN on afterward, since the core research
+question is a head-to-head comparison — asymmetric effort between the two
+would undermine that from the start.
+
+### Why
+
+Fixed the Graphviz gap directly rather than accepting single-layout
+spring rendering as a permanent Limitation, since the root cause was a
+local environment gap, not a design constraint — worth the fix instead of
+writing around it.
+
+### Issues
+
+Full dataset re-render still pending — CPU-bound and not yet run at end
+of day. Carried into Day 4 as a dependency check (confirmed unnecessary
+once Colab GPU training started, since Graphviz output is deterministic
+and the committed dataset already matched).
+
+### Next
+
+Move training onto Colab GPU: smoke-test first, then full training run.
+
+---
+
+## Day 4 — 16 Jul 2026 — Phase 2: GPU Training, GCN Bug Fix, Baseline Correction
+
+### Goal
+
+Get real, trustworthy checkpoints and evaluation numbers across all three
+models (CNN, GCN, graph-statistic) — replacing 2-epoch smoke-test
+placeholders with full training, and catching any bugs hiding behind
+untrustworthy early metrics.
+
+### What was done
+
+- Ran full 30-epoch training for both models on Colab (T4 GPU).
+- Found and fixed a GCN pooling bug (`global_add_pool` → `global_mean_pool`,
+  plus per-graph degree normalization) that was causing held-out MAE to
+  explode into the thousands on out-of-distribution real graphs.
+- Found and fixed a second, separate bug: the graph-statistic "baseline"
+  was reading ground truth directly rather than estimating anything,
+  giving it a meaningless 0.0 MAE everywhere. Replaced it with a
+  train-derived density heuristic.
+- Reran full training and evaluation after both fixes, pulled fresh
+  checkpoints locally, and committed everything.
+
+### How
+
+Both bugs were caught the same way: by noticing a metric that was
+physically implausible — either too perfect (0.0 MAE baseline) or too
+broken (thousands-scale MAE on the GCN) to be real — and tracing backward
+from there, rather than assuming the numbers were correct and moving on.
+
+### Why
+
+Chose `global_mean_pool` over clipping or capping the GCN's outputs, since
+the root cause was a genuine architectural mismatch (sum-pooling
+implicitly encodes graph size, and that assumption breaks hard once you're
+off-distribution), not a numerical-stability issue that clipping would
+have papered over. Similarly, chose to fix the baseline's leakage rather
+than quietly drop it from the report — a fair, if weak, baseline is worth
+more to the research narrative than a meaningless oracle number.
+
+### Issues
+
+The density-based replacement baseline is itself weak on sparse/large
+graphs, since density isn't constant across generators or graph sizes.
+Decided to report this as-is (a real, defensible finding) rather than
+spend remaining time engineering a better heuristic (e.g. a linear-in-`n`
+fit per generator) — the deadline doesn't leave slack for further baseline
+work, and the current result already supports the core narrative.
+
+### Next
+
+Phase 3: model interpretation / failure-case analysis, and drafting the
+final report (Methodology, Results, Discussion, Limitations).

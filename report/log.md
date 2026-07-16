@@ -75,3 +75,40 @@
   are now in the correct order of magnitude even on the largest test graphs.
 - Committed and pushed from Colab directly (GitHub PAT stored via Colab
   Secrets, not hardcoded in the notebook). Commit 288a4c5.
+
+# 2026-07-16 — Phase 2: graph-statistic baseline fix + retrain
+
+- Found that `graph_statistic_baseline.py` and `evaluate.py`'s
+  `predict_graph_statistic()` were reading `num_nodes`/`num_edges` directly
+  from ground truth instead of estimating them — a data-leakage bug, not a
+  real baseline. `graph_statistic_metrics.csv` showing exactly 0.0 MAE/RMSE
+  across every split and breakdown is what surfaced it.
+- Replaced with a non-leaking heuristic: node count is still returned
+  exactly (structurally trivial to observe, not a meaningful prediction
+  target), but edge count is now estimated as
+  `mean_density(generator) * n*(n-1)/2`, where `mean_density` is computed
+  once from the train split only, per generator, with a global fallback for
+  MUTAG/PROTEINS (never present in train).
+- Edited `models/graph_statistic_baseline.py` (full rewrite) and three
+  spots in `evaluation/evaluate.py` (new import, replaced
+  `predict_graph_statistic`, added a `build_density_table` call in
+  `main()`).
+- Result: no longer an oracle, but the heuristic performs poorly on sparse
+  and large graphs. Density isn't constant across generators — a random
+  tree's true density is `2/n` and shrinks as `n` grows, so applying an
+  averaged density to a quadratic term systematically overestimates edges
+  outside the calibration range. Held-out xlarge-tier edges MAE: 4,927.7 vs
+  CNN 203.6 and GCN 265.6. Kept as-is rather than engineered further — it's
+  a legitimate, reportable finding (naive non-learned heuristics don't
+  generalize across size/sparsity regimes) rather than a bug to fix away.
+- Full notebook rerun on Colab: `RUN_FULL_TRAINING=True` retrained both CNN
+  and GCN from scratch (not strictly required for the baseline fix, done
+  anyway). Numbers shifted slightly from the previous run due to
+  GPU/cuDNN non-determinism (e.g. test overall vertices MAE 4.5 → 3.2;
+  held-out xlarge vertices MAE 85.3 → 96.6) — same regime throughout, no
+  regressions.
+- Pushed in two commits: `ecdd8cd` (results CSVs + regenerated figures from
+  the retrain) and `e6cca5d` (notebook re-saved with the new inline
+  outputs). Checkpoints (`cnn_best.pt`, `gnn_best.pt`) pulled manually from
+  Colab into `models/checkpoints/` afterward (gitignored, not pushed via
+  git).
