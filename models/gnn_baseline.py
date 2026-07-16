@@ -21,7 +21,7 @@ from topolens_utils import ensure_dir, load_yaml_config, set_random_seeds
 try:
     from torch_geometric.data import Data
     from torch_geometric.loader import DataLoader
-    from torch_geometric.nn import GCNConv, global_add_pool
+    from torch_geometric.nn import GCNConv, global_mean_pool
 except Exception as exc:  # pragma: no cover - import guard for environments without PyG
     raise ImportError("torch_geometric is required for models/gnn_baseline.py") from exc
 
@@ -33,6 +33,7 @@ def graphml_to_pyg_data(graph: nx.Graph) -> Data:
     num_nodes = len(nodes)
 
     degrees = torch.tensor([[float(graph.degree(node))] for node in nodes], dtype=torch.float32)
+    degrees = degrees / (degrees.max() + 1e-6)
 
     edges = []
     for source, target in graph.edges():
@@ -99,7 +100,7 @@ class GraphCountGCN(nn.Module):
             x = conv(x, edge_index)
             x = norm(x)
             x = torch.relu(x)
-        x = global_add_pool(x, batch)
+        x = global_mean_pool(x, batch)
         return self.head(x)
 
     def num_parameters(self) -> int:
