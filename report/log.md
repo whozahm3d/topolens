@@ -168,9 +168,7 @@
   | held_out | ink_fraction | num_nodes | 0.070 |
   | held_out | num_components | num_nodes | 0.308 |
 
-  - On the test split, ink_fraction is a strong correlate of edge count (r=0.824) and predicted edges (r=0.845), but only a moderate correlate of node count (r=0.538). Confirms ink coverage encodes edge density more than vertex count.
-  - mean_component_area correlates with pred_num_vertices (r=0.627) on test — consistent with the Batch 1 causal finding that dot size encodes vertex count.
-  - Correlations drop substantially on held_out (larger, more varied graphs), suggesting the shortcut is less exploitable outside the training size range.
+
 - **Headline numbers — failure_case_summary.csv:**
 
   | split | category | mean_vertex_mae | mean_edge_mae | n |
@@ -181,7 +179,9 @@
   | test | in_distribution_normal | 4.00 | 14.42 | 265 |
   | test | high_density_clutter | 1.27 | 51.82 | 110 |
 
-  - Out-of-distribution size (num_nodes > 100) is the dominant error source on held_out: vertex MAE 96.64, edge MAE 203.60. Model fails to extrapolate beyond its training range.
-  - High-density clutter is surprisingly low-error on vertex count (held_out 0.43, test 1.27) but edge MAE on test is elevated (51.82) — predicting edges in dense graphs is harder.
-  - No out-of-distribution-size graphs appear in the test split (test is drawn from the same generator bounds as train, max_n ≤ 100).
 - Verification: `data/images/`, `data/splits/`, `data/processed/labels_processed.csv`, and all Batch 1 outputs (probe_predictions.csv, probe_summary.csv, gradcam/ images) confirmed byte-unchanged after all Batch 2 scripts ran. No retraining occurred.
+
+# 2026-07-17 — Correction: failure_taxonomy threshold + log trim
+
+- Verified `failure_taxonomy.py` was already using `topolens_utils.density_bucket(density) == "dense"` (≥0.40); re-ran script to confirm outputs match that threshold. `failure_case_summary.csv` numbers unchanged.
+- Trimmed interpretive narrative from Phase 3 Batch 2 entry (ink-coverage and failure-taxonomy bullet blocks removed; tables and raw numbers retained).
