@@ -268,3 +268,14 @@
 - This note is appended to make the log an accurate record: the Batch 1/2/3
   entries' "untouched" language was never false for the files it named, but it
   was silent on `progress_log.md`, and that silence is now explicit.
+
+# 2026-07-18 — Batch 4a: app navigation shell, Home/Results/Models sections
+
+- Re-structured `app/app.py` to add a multi-section navigation shell (Home, Predict, Results, Research Insights, Models).
+- Relocated the Predict view into a dedicated function; shifted the file uploader and active file selection to a side-by-side layout (left: upload, right: enlarged preview image display).
+- Implemented the Home landing page, including live dataset composition crosstab (generator vs size-tier) from `labels_processed.csv`, headline MAE metrics from `summary_comparison.csv`, rendering pipeline notes, and reproducibility info.
+- Implemented the Results view dashboard showing baseline metric tables, breakdown tabs, scatter plots, and dataset distributions. Added copy highlighting Heuristic Vertex MAE structural triviality.
+- Implemented the Models view displaying dynamic module layers and parameter counts for CNN and GCN models, convergence stats, hyperparameters, note on mean-pooling bug fix, and loss log line charts.
+- Added placeholders for Research Insights view.
+- Verified all sections locally via user-driven Streamlit run smoke tests; cleared syntax escape warning messages and container width deprecation warnings. No models were retrained and protected dataset/image files remain unchanged.
+
