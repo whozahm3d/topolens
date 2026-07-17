@@ -1,0 +1,6 @@
+split,category,mean_vertex_mae,median_vertex_mae,mean_edge_mae,median_edge_mae,n
+held_out,high_density_clutter,0.4305555555555556,0.0,1.125,1.0,144
+held_out,in_distribution_normal,6.673394495412844,3.0,20.790825688073394,10.0,1090
+held_out,out_of_distribution_size,96.64179104477611,71.0,203.59701492537314,155.0,67
+test,high_density_clutter,1.2727272727272727,1.0,51.81818181818182,4.0,110
+test,in_distribution_normal,4.0,2.0,14.422641509433962,3.0,265

@@ -137,12 +137,51 @@
 - Ran `render/render_probe_variants.py`: sampled 40 graphs from test split (20 cells × 2), rendered 40 constant-size variants to `data/images_probe/constant_node_size/` and 40 alt-layout (Kamada-Kawai) variants to `data/images_probe/alt_layout/`. Manifest written to `data/processed/probe_manifest.csv` (80 rows).
 - Ran `evaluation/shortcut_probe.py`: 120 predictions (40 graphs × 3 variants). Results in `evaluation/results/probe_predictions.csv` and `evaluation/results/probe_summary.csv`.
 - **Headline numbers (overall MAE, probe_summary.csv):**
+
   | variant | vertex_mae | edge_mae |
   |---|---|---|
   | original | 3.43 | 54.18 |
   | constant_node_size | 10.48 | 39.80 |
   | alt_layout | 3.08 | 35.53 |
+
   - Vertex MAE nearly triples under constant node size (3.43 → 10.48): strong evidence the CNN uses node size as a shortcut for vertex counting.
   - Edge MAE improves under both probe conditions — consistent with the model having learned node-size/layout cues that partially hurt edge estimation on the original renders.
   - Layout change (alt_layout) has minimal vertex MAE impact (3.43 → 3.08), suggesting the model is not strongly overfit to sfdp layout topology.
 - Verification: `data/images/` (3802 files), `data/splits/` (5 files), and `data/processed/labels_processed.csv` (844,253 bytes) all show pre-run mtimes — none modified.
+
+# 2026-07-17 — Phase 3 Batch 2: ink-coverage analysis, failure taxonomy, notebook
+
+- Added `scipy>=1.10` to `requirements.txt` (connected-component labeling).
+- Implemented `evaluation/image_statistics.py`: `compute_ink_fraction()` and `compute_component_stats()` (scipy.ndimage.label, 4-connectivity).
+- Implemented `evaluation/ink_coverage_analysis.py`: ran on 375 test + 1301 held_out images; saved `evaluation/results/ink_coverage_correlations.csv`, `report/figures/ink_coverage_vs_node_count.png`, `report/figures/component_size_vs_node_count.png`.
+- Implemented `evaluation/failure_taxonomy.py`: derived `max_train_n = 100` from `data/splits/train.csv`; saved `failure_case_categories.csv`, `failure_case_summary.csv`, `error_vs_num_nodes.png`, `error_vs_density.png`, `worst_case_image_grid.png`.
+- Created `notebooks/03_phase3_interpretation.ipynb`: covers Batch 1 + Batch 2 results inline. Bug fixed: notebook `os.getcwd()` returns the notebooks/ subdirectory, not the project root — added `os.chdir(project_root)` to the setup cell so all config-relative paths resolve correctly.
+- **Headline numbers — ink_coverage_correlations.csv (Pearson r):**
+
+  | split | metric_x | metric_y | r |
+  |---|---|---|---|
+  | test | ink_fraction | num_edges | **0.824** |
+  | test | ink_fraction | pred_num_edges | **0.845** |
+  | test | mean_component_area | pred_num_vertices | **0.627** |
+  | test | num_components | num_nodes | -0.240 |
+  | held_out | ink_fraction | pred_num_edges | **0.465** |
+  | held_out | ink_fraction | num_nodes | 0.070 |
+  | held_out | num_components | num_nodes | 0.308 |
+
+  - On the test split, ink_fraction is a strong correlate of edge count (r=0.824) and predicted edges (r=0.845), but only a moderate correlate of node count (r=0.538). Confirms ink coverage encodes edge density more than vertex count.
+  - mean_component_area correlates with pred_num_vertices (r=0.627) on test — consistent with the Batch 1 causal finding that dot size encodes vertex count.
+  - Correlations drop substantially on held_out (larger, more varied graphs), suggesting the shortcut is less exploitable outside the training size range.
+- **Headline numbers — failure_case_summary.csv:**
+
+  | split | category | mean_vertex_mae | mean_edge_mae | n |
+  |---|---|---|---|---|
+  | held_out | out_of_distribution_size | **96.64** | **203.60** | 67 |
+  | held_out | in_distribution_normal | 6.67 | 20.79 | 1090 |
+  | held_out | high_density_clutter | 0.43 | 1.13 | 144 |
+  | test | in_distribution_normal | 4.00 | 14.42 | 265 |
+  | test | high_density_clutter | 1.27 | 51.82 | 110 |
+
+  - Out-of-distribution size (num_nodes > 100) is the dominant error source on held_out: vertex MAE 96.64, edge MAE 203.60. Model fails to extrapolate beyond its training range.
+  - High-density clutter is surprisingly low-error on vertex count (held_out 0.43, test 1.27) but edge MAE on test is elevated (51.82) — predicting edges in dense graphs is harder.
+  - No out-of-distribution-size graphs appear in the test split (test is drawn from the same generator bounds as train, max_n ≤ 100).
+- Verification: `data/images/`, `data/splits/`, `data/processed/labels_processed.csv`, and all Batch 1 outputs (probe_predictions.csv, probe_summary.csv, gradcam/ images) confirmed byte-unchanged after all Batch 2 scripts ran. No retraining occurred.
