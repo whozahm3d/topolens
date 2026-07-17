@@ -127,3 +127,22 @@
   outputs). Checkpoints (`cnn_best.pt`, `gnn_best.pt`) pulled manually from
   Colab into `models/checkpoints/` afterward (gitignored, not pushed via
   git).
+
+# 2026-07-17 — Phase 3 Batch 1: render refactor, Grad-CAM, shortcut/layout probes
+
+- Refactored `render_graphs.py` to support `node_size_fn` and `layout_override` (with kamada_kawai fallback).
+- Regression check: 3/3 re-rendered graphs byte-identical to `data/images/` under default args (graphviz_sfdp layout confirmed). Root cause of initial failure: `.venv` pydot could not launch `sfdp.BAT` via subprocess on Windows; fixed by prepending `E:\Anaconda\envs\py-dev\Library\bin` (containing `sfdp.exe`) to PATH in `render_graphs.py`.
+- Implemented `GradCAM` for the custom CNN in `models/gradcam.py` (target layer `features[3]`). Bug fixed: `cm.get_cmap` removed in newer Matplotlib; replaced with `matplotlib.colormaps['jet']`.
+- Ran `evaluation/interpretation.py`: generated 60 CAM overlays (30 graphs × vertex + edge) in `report/figures/gradcam/`, plus composite grids `gradcam_grid_by_generator.png` (1.07 MB) and `gradcam_grid_failure_cases.png` (4.1 MB).
+- Ran `render/render_probe_variants.py`: sampled 40 graphs from test split (20 cells × 2), rendered 40 constant-size variants to `data/images_probe/constant_node_size/` and 40 alt-layout (Kamada-Kawai) variants to `data/images_probe/alt_layout/`. Manifest written to `data/processed/probe_manifest.csv` (80 rows).
+- Ran `evaluation/shortcut_probe.py`: 120 predictions (40 graphs × 3 variants). Results in `evaluation/results/probe_predictions.csv` and `evaluation/results/probe_summary.csv`.
+- **Headline numbers (overall MAE, probe_summary.csv):**
+  | variant | vertex_mae | edge_mae |
+  |---|---|---|
+  | original | 3.43 | 54.18 |
+  | constant_node_size | 10.48 | 39.80 |
+  | alt_layout | 3.08 | 35.53 |
+  - Vertex MAE nearly triples under constant node size (3.43 → 10.48): strong evidence the CNN uses node size as a shortcut for vertex counting.
+  - Edge MAE improves under both probe conditions — consistent with the model having learned node-size/layout cues that partially hurt edge estimation on the original renders.
+  - Layout change (alt_layout) has minimal vertex MAE impact (3.43 → 3.08), suggesting the model is not strongly overfit to sfdp layout topology.
+- Verification: `data/images/` (3802 files), `data/splits/` (5 files), and `data/processed/labels_processed.csv` (844,253 bytes) all show pre-run mtimes — none modified.

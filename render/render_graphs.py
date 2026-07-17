@@ -18,6 +18,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import config
 from topolens_utils import compute_density, density_bucket, ensure_dir
 
+# Add Anaconda Graphviz Library path on Windows to avoid .bat wrapping issues in pydot
+if sys.platform == "win32":
+    graphviz_bin = r"E:\Anaconda\envs\py-dev\Library\bin"
+    if os.path.exists(graphviz_bin) and graphviz_bin not in os.environ["PATH"]:
+        os.environ["PATH"] = graphviz_bin + os.pathsep + os.environ["PATH"]
+
 
 def seed_from_id(graph_id: str) -> int:
     """Derives a deterministic 32-bit integer seed from a string ID."""
@@ -25,7 +31,10 @@ def seed_from_id(graph_id: str) -> int:
     return int(h.hexdigest(), 16) % (2**32)
 
 
-def render_graph(G: nx.Graph, graph_id: str, out_dir: str, image_size=config.IMAGE_SIZE, dpi=config.IMAGE_DPI, seed=None) -> dict:
+def render_graph(
+    G: nx.Graph, graph_id: str, out_dir: str, image_size=config.IMAGE_SIZE, dpi=config.IMAGE_DPI, seed=None,
+    node_size_fn=None, layout_override=None
+) -> dict:
     """Computes a layout and renders G to PNG.
     Style requirements:
       - White background
@@ -48,23 +57,31 @@ def render_graph(G: nx.Graph, graph_id: str, out_dir: str, image_size=config.IMA
     pos = None
     layout_algorithm = None
     
-    # Try pygraphviz sfdp
-    try:
-        # pyrefly: ignore [missing-import]
-        import pygraphviz
-        pos = nx.drawing.nx_agraph.graphviz_layout(G, prog='sfdp')
-        layout_algorithm = "graphviz_sfdp"
-    except Exception:
-        # Try pydot sfdp
+    if layout_override == "kamada_kawai":
+        try:
+            pos = nx.kamada_kawai_layout(G)
+            layout_algorithm = "kamada_kawai"
+        except Exception:
+            pos = nx.spring_layout(G, seed=layout_seed + 1)
+            layout_algorithm = "spring_fallback_from_kamada_kawai"
+    else:
+        # Try pygraphviz sfdp
         try:
             # pyrefly: ignore [missing-import]
-            import pydot
-            pos = nx.drawing.nx_pydot.graphviz_layout(G, prog='sfdp')
+            import pygraphviz
+            pos = nx.drawing.nx_agraph.graphviz_layout(G, prog='sfdp')
             layout_algorithm = "graphviz_sfdp"
         except Exception:
-            # Fall back to NetworkX spring layout
-            pos = nx.spring_layout(G, seed=layout_seed)
-            layout_algorithm = "networkx_spring"
+            # Try pydot sfdp
+            try:
+                # pyrefly: ignore [missing-import]
+                import pydot
+                pos = nx.drawing.nx_pydot.graphviz_layout(G, prog='sfdp')
+                layout_algorithm = "graphviz_sfdp"
+            except Exception:
+                # Fall back to NetworkX spring layout
+                pos = nx.spring_layout(G, seed=layout_seed)
+                layout_algorithm = "networkx_spring"
             
     # 2. Render and Draw
     fig, ax = plt.subplots(figsize=(image_size / dpi, image_size / dpi), dpi=dpi)
@@ -91,7 +108,10 @@ def render_graph(G: nx.Graph, graph_id: str, out_dir: str, image_size=config.IMA
         # Scaling node size: max(15, 4000 / n)
         # Note: This makes node density in the image correlate with n, which the CNN
         # could exploit as a shortcut instead of reading topology. Flagged for Phase 3 analysis.
-        node_size = max(15, 4000 / n)
+        if node_size_fn is not None:
+            node_size = node_size_fn(n)
+        else:
+            node_size = max(15, 4000 / n)
         
         # Modern, clean aesthetics: deep Indigo nodes (#4F46E5) and subtle Slate edges (#94A3B8)
         nx.draw_networkx_nodes(

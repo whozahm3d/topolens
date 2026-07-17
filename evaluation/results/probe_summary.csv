@@ -1,0 +1,16 @@
+breakdown,group_value,variant,vertex_mae,edge_mae,n
+overall,all,original,3.425,54.175,40
+overall,all,constant_node_size,10.475,39.8,40
+overall,all,alt_layout,3.075,35.525,40
+tier,large,original,8.9,195.5,10
+tier,large,constant_node_size,16.7,82.8,10
+tier,large,alt_layout,7.1,122.4,10
+tier,medium,original,3.5,16.3,10
+tier,medium,constant_node_size,15.3,51.7,10
+tier,medium,alt_layout,3.8,13.2,10
+tier,small,original,1.0,3.3,10
+tier,small,constant_node_size,8.5,21.2,10
+tier,small,alt_layout,1.0,4.9,10
+tier,tiny,original,0.3,1.6,10
+tier,tiny,constant_node_size,1.4,3.5,10
+tier,tiny,alt_layout,0.4,1.6,10

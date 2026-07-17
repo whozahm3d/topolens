@@ -28,3 +28,7 @@ LABELS_CSV = "data/labels.csv"
 PROCESSED_LABELS_CSV = "data/processed/labels_processed.csv"
 
 TU_DATASETS = ["MUTAG", "PROTEINS"]
+
+CHECKPOINTS_DIR = "models/checkpoints"
+RESULTS_DIR = "evaluation/results"
+REPORT_FIGURES_DIR = "report/figures"
