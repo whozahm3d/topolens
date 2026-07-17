@@ -344,3 +344,155 @@ work, and the current result already supports the core narrative.
 
 Phase 3: model interpretation / failure-case analysis, and drafting the
 final report (Methodology, Results, Discussion, Limitations).
+
+---
+
+## Day 5 — 17 Jul 2026 — Phase 3: Interpretation, Analysis & App
+
+### Goal
+
+Turn the trained checkpoints into insight: understand *what* the CNN
+actually learned, characterize exactly *where* it fails and why, build the
+Streamlit demo app the project requires as a deliverable, and lay the
+skeleton of the final report — all without touching the training artifacts
+or rerunning a single training step.
+
+### What was done
+
+**Batch 1 — Grad-CAM & shortcut/layout probes**
+
+- Refactored `render_graphs.py` to accept `node_size_fn` and
+  `layout_override` arguments (with Kamada-Kawai fallback), enabling
+  controlled probe variants to be rendered without changing the canonical
+  dataset.
+- Implemented `GradCAM` for the custom CNN (`models/gradcam.py`), targeting
+  `features[3]` — the last spatial convolutional layer before global pooling,
+  where the network's spatial attention is most interpretable.
+- Ran `evaluation/interpretation.py`: produced 60 CAM overlays (30 test
+  graphs × vertex + edge targets) and two composite grids saved to
+  `report/figures/gradcam/`.
+- Rendered two probe variant sets (40 constant-node-size images, 40
+  Kamada-Kawai alt-layout images) via `render/render_probe_variants.py` and
+  ran `evaluation/shortcut_probe.py` to get predictions on all three
+  variants per graph.
+- Headline shortcut-probe result: vertex MAE nearly **tripled** when node
+  rendering size was held constant (3.43 → 10.48), confirming the CNN uses
+  apparent node size as a strong proxy for vertex counting. Edge MAE
+  *improved* under both probe conditions, suggesting the same size cue that
+  helps vertex estimation slightly hurts edge estimation on original renders.
+  Layout change (sfdp → Kamada-Kawai) had minimal vertex MAE impact (3.43 →
+  3.08), ruling out heavy overfit to sfdp's specific spatial layout.
+
+**Batch 2 — Ink-coverage analysis & failure taxonomy**
+
+- Implemented `evaluation/image_statistics.py` (ink fraction, connected-
+  component label stats) and `evaluation/ink_coverage_analysis.py`, running
+  over 375 test + 1,301 held-out images. Saved correlation tables and
+  scatter plots to `report/figures/`.
+- Implemented `evaluation/failure_taxonomy.py`: categorized every test and
+  held-out prediction into `out_of_distribution_size`, `high_density_clutter`,
+  or `in_distribution_normal` buckets, then computed per-category MAE.
+- Headline ink-coverage finding: ink fraction correlates strongly with
+  predicted edge count (Pearson *r* = 0.845 on test), providing a pixel-
+  level explanation for why the CNN performs well in-distribution — the total
+  line coverage in the image is a reliable proxy for edge count when graph
+  size is controlled. That correlation collapses on held-out graphs (*r* =
+  0.465 for edges) as graph sizes leave the training distribution.
+- Headline failure-taxonomy finding: the one failure category that dominates
+  is out-of-distribution size (`num_nodes > 100`, PROTEINS graphs): held-out
+  OOD vertex MAE 96.6 vs. in-distribution 6.7. High-density graphs are
+  *not* a failure mode — the CNN handles them better than average.
+- Created the Phase 3 results notebook
+  (`notebooks/03_model_interpretation_and_vulnerability_probes.ipynb`),
+  covering Batch 1 and Batch 2 outputs inline.
+
+**Batch 3 — Streamlit app, report skeleton & UI polish**
+
+- Created `app/app.py` with a full Warm Editorial design system (Playfair
+  Display / Source Sans 3 typography, amber primary color, cream background,
+  staggered `fadeInUp` animations). Two input modes: PNG/JPG image upload
+  and `.graphml`/`.csv`/`.txt` graph file upload; Grad-CAM overlay toggle
+  for both targets.
+- The app's "Model limitations" expander reads real numbers at startup from
+  the evaluation CSVs rather than hardcoding them, so the displayed metrics
+  stay in sync with any future evaluation run automatically.
+- Fixed two bugs found during smoke testing: a checkpoint-loading mismatch
+  (the checkpoint is a wrapped dict, not a raw `state_dict`) and a Streamlit
+  1.59 deprecation warning in the image display call.
+- Iterated the design to a Neo-Brutalist system (Syne + Plus Jakarta Sans,
+  flat black borders, offset box-shadows), multi-file upload with a
+  selectbox switcher, and ground-truth validation for dataset images (looks
+  up `labels_processed.csv` by filename stem and renders a prediction vs.
+  truth table when the image is from the known dataset).
+- Created `report/FINAL_REPORT.md`: header-only skeleton matching the exact
+  Task I submission structure, with a literal file-index appendix pointing at
+  every figure and result CSV produced across all three phases.
+
+### How
+
+Phase 3 was run as three sequenced batches precisely so that each batch had
+a clearly defined verification step before the next one started: confirm
+no training artifact was modified, confirm all prior result files are
+byte-unchanged, then proceed. This mattered because interpretation tools
+(Grad-CAM, probe scripts) load the checkpoint read-only — any accidental
+side-effect on `data/images/` or `data/splits/` would silently invalidate
+earlier phase results, so the explicit checks weren't ceremony, they were
+the safety net. The Streamlit app deliberately imports all ML logic from the
+existing module tree rather than reimplementing anything inline, so the app
+is a thin UI layer over already-tested code rather than a second, untested
+copy of the inference pipeline.
+
+### Why
+
+**Why Grad-CAM on `features[3]` specifically?** `features[3]` is the last
+spatial block before the global average pooling that collapses the feature
+map to a vector. After that point, spatial information is gone and CAM
+can't be computed in the traditional sense. `features[3]` is therefore the
+last layer where "where in the image did this prediction come from" is still
+a meaningful question — which is exactly what the interpretation step needed
+to answer.
+
+**Why run probe variants instead of just examining Grad-CAM?** Grad-CAM
+shows *where* the network looks; it doesn't directly answer *what visual
+feature it is responding to*. The shortcut probes answer that by controlled
+intervention: hold the graph topology constant and vary one rendering
+parameter (node size, layout algorithm) at a time, then measure whether
+predictions change. If they do, that rendering parameter is a confound the
+model has learned to rely on. CAM and probes are complementary — neither
+alone is sufficient.
+
+**Why report the density-based baseline's failure as a finding rather than
+engineering a better heuristic?** The baseline's systematic failure on
+sparse/large graphs isn't a problem to be solved — it's a data point in the
+argument for learned approaches. A density heuristic that's calibrated on
+one size regime and applied to another breaks because graph density is not
+scale-invariant; the CNN and GCN, trained end-to-end, implicitly learn
+that. Replacing the baseline with a more sophisticated formula would
+produce a more competitive number at the cost of obscuring exactly the
+point the comparison is meant to make.
+
+**Why a Neo-Brutalist redesign of the Streamlit app?** The initial Warm
+Editorial design was aesthetically coherent but visually soft in a way
+that doesn't read well as a technical demo. Neo-Brutalism (flat offset
+shadows, heavy borders, high-contrast type hierarchy) communicates
+structure and precision — qualities that are appropriate for a tool whose
+output is numerical predictions — and it differentiates the app from the
+default Streamlit aesthetic in a way that signals deliberate design intent
+rather than the framework's out-of-the-box defaults.
+
+### Issues
+
+- `report/FINAL_REPORT.md` is a skeleton only — all analytical sections
+  (`Methodology`, `Results`, `Discussion`, `Limitations`) are headers with
+  no content yet. Writing the report is the remaining work.
+- The Streamlit app's Grad-CAM overlay currently requires the CNN checkpoint
+  to be present at `models/checkpoints/cnn_best.pt` locally; it will not
+  load on a fresh clone without the checkpoint (which is gitignored). This
+  is a known deployment gap — documented in the app's sidebar but not
+  resolved.
+
+### Next
+
+Write the final report: fill in the `FINAL_REPORT.md` skeleton with the
+Methodology, Results, Discussion, and Limitations sections, drawing on the
+data already in `evaluation/results/` and `report/figures/`.

@@ -168,7 +168,6 @@
   | held_out | ink_fraction | num_nodes | 0.070 |
   | held_out | num_components | num_nodes | 0.308 |
 
-
 - **Headline numbers — failure_case_summary.csv:**
 
   | split | category | mean_vertex_mae | mean_edge_mae | n |
@@ -192,7 +191,7 @@
   `backgroundColor = "#F4EFE6"` (cream), `secondaryBackgroundColor = "#EAE4D8"`.
 - Created `app/app.py`: Warm Editorial design system ("The Psychology Behind Type Choices" theme). Imports:
   `models/cnn_model.py::CustomCNNRegressor`, `models/dataset.py::build_image_transform`
-  + `compute_normalization_stats`, `models/gradcam.py::GradCAM` + `overlay_cam`,
+  - `compute_normalization_stats`, `models/gradcam.py::GradCAM` + `overlay_cam`,
   `render/render_graphs.py::render_graph`. No ML logic reimplemented.
   - `@st.cache_resource` loads checkpoint + normalize stats + GradCAM instance.
   - Two input modes: (1) PNG/JPG image upload → preprocess → predict;
@@ -224,61 +223,30 @@
 - Post-fix: app loads checkpoint cleanly, predictions display correctly for both
   input modes, Grad-CAM toggle functional, limitations expander shows real CSV
   values. Import-time check also re-confirmed: `app.app: import OK`.
+- **UI/UX redesign — multi-file input, Neo-Brutalist design, ground-truth validation**
+  (iterated within same session, no separate batch boundary):
+  - **Multi-file input**: Replaced two separate upload toggles with a single
+    `st.file_uploader` accepting `["png", "jpg", "jpeg", "graphml", "csv", "txt"]`
+    simultaneously (`accept_multiple_files=True`). Active file selected via
+    `st.selectbox` when more than one file is uploaded. File bytes read via
+    `.getvalue()` (not `.read()`) to survive Streamlit reruns.
+  - **Ground-truth validation for image uploads**: Added `load_ground_truth_for_file()`
+    helper. Filename stem looked up against `data/processed/labels_processed.csv`
+    (column `graph_id`); if matched, `num_nodes`/`num_edges` and corresponding GraphML
+    are retrieved. Validation table (Ground Truth vs CNN Prediction, Absolute Error,
+    Accuracy %) and topological-properties cards now render for dataset images, not
+    just graph file uploads.
+  - **Neo-Brutalist design system** (full `EDITORIAL_CSS` rewrite): Syne 800 +
+    Plus Jakarta Sans body + JetBrains Mono; `#F5F5F5` background; `3px solid #000`
+    borders with `4px 4px 0px #000` flat offset shadows on expanders and tables;
+    sidebar `#1E1F26` charcoal; per-card accent colors (density mustard `#C08A00`,
+    components violet `#9C47FF`, clustering sky `#00B5FF`). `config.toml` updated
+    to `primaryColor = "#000000"`, `backgroundColor = "#F5F5F5"`.
+  - **Icon/widget bug fixes**: sidebar collapse arrow and file-uploader button both
+    rendered incorrectly because `[data-testid="stSidebar"] span` was overriding
+    the Material Icons ligature font. Fixed by removing `span` from the sidebar
+    CSS selector. Section-label paragraphs switched from all-caps Syne to Plus
+    Jakarta Sans body styling.
 - Verified (by listing): `data/images/`, `data/splits/`,
-  `data/processed/labels_processed.csv`, and all Batch 1/2 output files listed
-  in spec Section 0 are untouched. No retraining occurred.
-
-# 2026-07-17 — Phase 3 Batch 4: UI/UX redesign, multi-file input, ground-truth validation
-
-- **Multi-file input**: Replaced two separate upload toggles (image mode / graph mode)
-  with a single `st.file_uploader` accepting all types simultaneously
-  (`["png", "jpg", "jpeg", "graphml", "csv", "txt"]`, `accept_multiple_files=True`).
-  Active file selected via `st.selectbox` when more than one file is uploaded.
-  File bytes read via `.getvalue()` (not `.read()`) to survive Streamlit reruns.
-
-- **Ground-truth validation for image uploads**: Added `load_ground_truth_for_file()`
-  helper. On any upload, the filename stem is looked up against
-  `data/processed/labels_processed.csv` (column `graph_id`). If matched:
-  - `num_nodes` / `num_edges` ground-truth counts are retrieved.
-  - The corresponding GraphML file (column `graph_path`) is loaded via NetworkX.
-  - The validation table (Ground Truth vs CNN Prediction, Absolute Error, Accuracy %)
-    and the three topological-properties cards (Graph Density, Connected Components,
-    Avg Clustering Coefficient) now render for dataset images, not just graph file
-    uploads. Previously only `.graphml` / `.csv` / `.txt` uploads triggered this panel.
-
-- **Neo-Brutalist design system** (full CSS overhaul, `EDITORIAL_CSS` rewrite):
-  - **Fonts**: Switched from Playfair Display / Source Sans 3 to `Syne` (display,
-    wt 800) + `Plus Jakarta Sans` (body, wt 400–800) + `JetBrains Mono` (code).
-  - **Background**: `#F5F5F5` (light cool gray) replacing the warm cream `#F2E2DC`.
-  - **Typography**: All custom-class properties (`!important`) to prevent Streamlit
-    container overrides. Global font-family override scoped to
-    `.stMarkdown p:not(.hero-title):not(.hero-subtitle)` — avoids overriding
-    Streamlit icon ligatures and file-uploader button spans.
-  - **Hero title** (`.hero-title`): Syne 800, `4.5rem`, uppercase, italic,
-    left-aligned, `letter-spacing: -0.04em`. Bottom border only (`4px solid #000`).
-  - **Hero subtitle** (`.hero-subtitle`): Plus Jakarta Sans 500, `1.05rem`,
-    left-aligned. Text updated to: "CNN-powered graph topology estimator — predicts
-    vertex & edge counts directly from rendered 2D graph images."
-  - **Sidebar**: `#1E1F26` (solid cinematic dark charcoal) with `3px solid #000`
-    right border. Sidebar text white; `span` elements intentionally excluded from
-    font-family override to preserve Streamlit icon ligatures (collapse arrow,
-    file-uploader button).
-  - **Expanders**: `3px solid #000`, `box-shadow: 4px 4px 0px #000` (flat offset).
-  - **Tables**: Black header row (Syne 800, white text, `th * { color:#FFF }`),
-    white cell background, `3px solid #000` border, `box-shadow: 4px 4px 0px #000`.
-  - **Letterbox frames**: `3px solid #000`, `box-shadow: 6px 6px 0px #000`, white bg.
-  - **Topological property cards**: Per-card accent colors — density `#C08A00`
-    (mustard), components `#9C47FF` (violet), clustering `#00B5FF` (sky blue).
-  - **config.toml** theme: `primaryColor = "#000000"`, `backgroundColor = "#F5F5F5"`,
-    `secondaryBackgroundColor = "#E5E5E5"`, `textColor = "#000000"`.
-
-- **Icon/widget bug fixes**:
-  - Sidebar collapse arrow (`keyboard_double_arrow_left`) was rendering as literal
-    text — root cause was `[data-testid="stSidebar"] span` CSS rule overriding the
-    Material Icons ligature font. Fix: removed `span` from the sidebar selector.
-  - File-uploader button showed "uploadupload" overlap — same root cause. Resolved
-    by the same fix (span removed from sidebar override selector).
-  - Descriptionparagraphs that were styled with `.section-label` (all-caps Syne,
-    0.8rem) were replaced with inline `Plus Jakarta Sans` body-text styling so
-    they read as readable descriptions, not section headings.
-
+  `data/processed/labels_processed.csv`, and all Batch 1/2/3 output files are
+  untouched. No retraining occurred.
