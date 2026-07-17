@@ -1,19 +1,7 @@
 # Topolens: Estimating Graph Structural Properties from Rendered Images
 
-This report documents the design, training, and evaluation of **Topolens**, a
-CNN-based system that estimates vertex and edge counts directly from rendered
-2D graph images without access to raw graph topology. A four-block
-`CustomCNNRegressor` is trained on 2,500 synthetic graphs (five NetworkX
-generators, four size tiers, Graphviz `sfdp` layout, 224 × 224 px PNG) and
-evaluated against a GCN baseline (`GraphCountGCN`) and a density-heuristic
-statistical baseline. Quantitative evaluation covers per-split MAE/RMSE
-breakdowns; three interpretability analyses (Grad-CAM attention maps,
-node-size shortcut probe, Kamada-Kawai layout-sensitivity probe) and an
-ink-coverage correlational study characterize how the model achieves its
-predictions and where it fails. The Streamlit inference app (`app/app.py`)
-exposes both image and graph-file upload, live Grad-CAM overlays, and an
-empirical validation panel that compares CNN predictions against ground-truth
-counts from the training dataset.
+_One-paragraph abstract — placeholder only, written by hand once Sections
+1–7 are complete._
 
 ---
 

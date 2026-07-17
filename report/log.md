@@ -250,3 +250,21 @@
 - Verified (by listing): `data/images/`, `data/splits/`,
   `data/processed/labels_processed.csv`, and all Batch 1/2/3 output files are
   untouched. No retraining occurred.
+
+# 2026-07-18 — Correction: scope of "untouched" claims; progress_log.md Day 5 addition
+
+- The "untouched" and "confirmed byte-unchanged" claims in the Batch 1, Batch 2,
+  and Batch 3 entries above refer specifically to: `data/images/`, `data/splits/`,
+  `data/processed/labels_processed.csv`, and the output files from earlier batches
+  (probe CSVs, gradcam images, ink-coverage and failure-taxonomy results). Those
+  claims do not cover `progress_log.md`.
+
+- `progress_log.md` has a "Day 5 — 17 Jul 2026" section covering Phase 3 Batch 1,
+  2, and 3. This section was present in the file as of 2026-07-18. Its authorship
+  is unconfirmed: it was not within the explicitly scoped deliverables for any of
+  the three batches, but it is consistent with agentic tooling having written it
+  during the Batch 3 session. No claim is made either way.
+
+- This note is appended to make the log an accurate record: the Batch 1/2/3
+  entries' "untouched" language was never false for the files it named, but it
+  was silent on `progress_log.md`, and that silence is now explicit.
