@@ -35,8 +35,10 @@ import config  # noqa: E402 — after sys.path fix
 from models.cnn_model import CustomCNNRegressor  # noqa: E402
 from models.dataset import build_image_transform, compute_normalization_stats  # noqa: E402
 from models.gradcam import GradCAM, overlay_cam  # noqa: E402
+from models.gnn_baseline import load_graph_count_gcn, predict_graph_counts as predict_gcn_graph_counts  # noqa: E402
+from models.graph_statistic_baseline import build_density_table, predict_graph_counts as predict_graph_stat_counts  # noqa: E402
 from render.render_graphs import render_graph  # noqa: E402
-from topolens_utils import load_yaml_config  # noqa: E402
+from topolens_utils import compute_density, density_bucket, load_yaml_config  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -83,6 +85,63 @@ def load_model_and_gradcam() -> Tuple[CustomCNNRegressor, Tuple, GradCAM]:
 
     gcam = GradCAM(model)
     return model, normalize_stats, gcam
+
+
+@st.cache_resource(show_spinner="Loading graph baselines…")
+def load_graph_comparison_assets() -> Tuple[object, float]:
+    """Load the GCN checkpoint and heuristic fallback density once per session."""
+    gnn_model = load_graph_count_gcn(PROJECT_ROOT / "models" / "checkpoints" / "gnn_best.pt")
+    _, fallback_density = build_density_table(PROJECT_ROOT / "data" / "splits" / "train.csv")
+    return gnn_model, fallback_density
+
+
+@st.cache_data(show_spinner=False)
+def load_warning_reference_data() -> dict:
+    """Load the training ceiling plus failure-case MAEs needed for live warnings."""
+    data: dict = {}
+
+    try:
+        train_df = pd.read_csv(TRAIN_CSV)
+        data["max_train_n"] = int(train_df["num_nodes"].max())
+    except Exception:
+        data["max_train_n"] = None
+
+    summary_df = safe_read_csv(RESULTS_DIR / "failure_case_summary.csv")
+    if summary_df is not None and {"split", "category", "mean_vertex_mae", "mean_edge_mae"}.issubset(summary_df.columns):
+        held_out_summary = summary_df[summary_df["split"] == "held_out"]
+
+        size_row = held_out_summary[held_out_summary["category"] == "out_of_distribution_size"]
+        if not size_row.empty:
+            row = size_row.iloc[0]
+            data["size_warning"] = {
+                "label": "out_of_distribution_size",
+                "vertex_mae": float(row["mean_vertex_mae"]),
+                "edge_mae": float(row["mean_edge_mae"]),
+            }
+
+        dense_row = held_out_summary[held_out_summary["category"] == "high_density_clutter"]
+        if not dense_row.empty:
+            row = dense_row.iloc[0]
+            data["dense_warning"] = {
+                "label": "high_density_clutter",
+                "vertex_mae": float(row["mean_vertex_mae"]),
+                "edge_mae": float(row["mean_edge_mae"]),
+                "source": "summary",
+            }
+
+    if "dense_warning" not in data:
+        categories_df = safe_read_csv(RESULTS_DIR / "failure_case_categories.csv")
+        if categories_df is not None and {"split", "density_bucket", "abs_vertex_error", "abs_edge_error"}.issubset(categories_df.columns):
+            dense_rows = categories_df[(categories_df["split"] == "held_out") & (categories_df["density_bucket"] == "dense")]
+            if not dense_rows.empty:
+                data["dense_warning"] = {
+                    "label": "dense_bucket_fallback",
+                    "vertex_mae": float(dense_rows["abs_vertex_error"].mean()),
+                    "edge_mae": float(dense_rows["abs_edge_error"].mean()),
+                    "source": "fallback",
+                }
+
+    return data
 
 
 @st.cache_data(show_spinner=False)
@@ -535,6 +594,326 @@ def load_headline_metrics() -> dict:
         return metrics
     except Exception:
         return {}
+
+
+def safe_read_csv(csv_path: Path) -> Optional[pd.DataFrame]:
+    """Read a CSV file safely and return None on any failure."""
+    try:
+        if not csv_path.exists():
+            return None
+        return pd.read_csv(csv_path)
+    except Exception:
+        return None
+
+
+def format_number(value: object, decimals: int = 2) -> str:
+    """Format a numeric value for display, or return a fallback string."""
+    try:
+        return f"{float(value):.{decimals}f}"
+    except Exception:
+        return "N/A"
+
+
+def render_data_unavailable(message: str = "data unavailable") -> None:
+    """Render a compact fallback card for partially missing research data."""
+    st.markdown(
+        f"""
+        <div class="neobrutalist-card" style="background:#FFF3CD;">
+            <p style="font-size:0.9rem; font-weight:700; margin:0;">{message}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_prediction_warning_banner(
+    warning_data: dict,
+    num_nodes: int,
+    density_value: float,
+    is_graph_upload: bool,
+    size_triggered: bool,
+    dense_triggered: bool,
+) -> None:
+    """Render the live Predict warning banner when a size or density trigger fires."""
+    if not size_triggered and not dense_triggered:
+        return
+
+    max_train_n = warning_data.get("max_train_n")
+    size_warning = warning_data.get("size_warning")
+    dense_warning = warning_data.get("dense_warning")
+
+    lines: list[str] = []
+    if size_triggered and size_warning and max_train_n is not None:
+        lines.append(
+            f"This graph has {num_nodes} nodes, above the training ceiling of {max_train_n}. "
+            f"Historical held-out accuracy for graphs in this range: vertex MAE {size_warning['vertex_mae']:.2f}, "
+            f"edge MAE {size_warning['edge_mae']:.2f}. Treat this prediction with reduced confidence."
+        )
+
+    if dense_triggered and dense_warning:
+        density_prefix = (
+            "This graph's density, based on its actual graph topology, falls in the dense bucket."
+            if is_graph_upload
+            else "This graph's estimated density, based on this model's own predicted counts, falls in the dense bucket."
+        )
+        lines.append(
+            f"{density_prefix} Historical held-out accuracy for dense graphs: vertex MAE {dense_warning['vertex_mae']:.2f}, "
+            f"edge MAE {dense_warning['edge_mae']:.2f}. Treat this prediction with reduced confidence."
+        )
+
+    if not lines:
+        return
+
+    st.markdown(
+        f"""
+        <div class="neobrutalist-card" style="background:#FFF3CD; border-color:#000000;">
+            <p style="font-size:0.9rem; font-weight:700; margin:0 0 0.55rem 0;">Reduced-confidence warning</p>
+            <p style="font-size:0.88rem; margin:0; line-height:1.55;">{"<br><br>".join(lines)}</p>
+            <p style="font-size:0.82rem; margin:0.65rem 0 0 0;">
+                See Research Insights &rarr; Failure-Case Taxonomy for the full analysis of this failure mode.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_research_insights_section() -> None:
+    """Render the Research Insights section with independently safe subsections."""
+    st.markdown('<p class="section-label reveal-2">Research Insights</p>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="neobrutalist-card">
+            <p style="font-size:0.95rem; margin:0;">
+                This section connects the model's outputs to probe results, layout sensitivity checks, and failure-case patterns.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ------------------------------------------------------------------
+    # 1) Grad-CAM
+    # ------------------------------------------------------------------
+    st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
+    st.markdown('<p class="section-label">1. Grad-CAM - What Does the Model Look At?</p>', unsafe_allow_html=True)
+
+    gradcam_by_generator = PROJECT_ROOT / "report" / "figures" / "gradcam_grid_by_generator.png"
+    gradcam_failure_cases = PROJECT_ROOT / "report" / "figures" / "gradcam_grid_failure_cases.png"
+    if gradcam_by_generator.exists() and gradcam_failure_cases.exists():
+        col_cam1, col_cam2 = st.columns(2)
+        with col_cam1:
+            render_image_in_frame(gradcam_by_generator, "Grad-CAM by generator", 380)
+        with col_cam2:
+            render_image_in_frame(gradcam_failure_cases, "Grad-CAM failure cases", 380)
+        st.markdown(
+            """
+            <div class="neobrutalist-card">
+                <p style="font-size:0.9rem; margin:0;">
+                    Grad-CAM highlights the image regions that the CNN prediction is most sensitive to, so brighter areas show which visual cues the model is using when it estimates graph size.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        render_data_unavailable()
+
+    # ------------------------------------------------------------------
+    # 2) Shortcut-learning probe
+    # ------------------------------------------------------------------
+    st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
+    st.markdown('<p class="section-label">2. Shortcut-Learning Probe (Node-Size Confound)</p>', unsafe_allow_html=True)
+
+    probe_df = safe_read_csv(RESULTS_DIR / "probe_summary.csv")
+    probe_fig = PROJECT_ROOT / "report" / "figures" / "probe_variant_mae_comparison.png"
+    if probe_df is not None and {"breakdown", "variant", "vertex_mae"}.issubset(probe_df.columns):
+        probe_overall = probe_df[probe_df["breakdown"] == "overall"]
+        orig_row = probe_overall[probe_overall["variant"] == "original"]
+        const_row = probe_overall[probe_overall["variant"] == "constant_node_size"]
+        if not orig_row.empty and not const_row.empty:
+            orig_vertex_mae = float(orig_row.iloc[0]["vertex_mae"])
+            const_vertex_mae = float(const_row.iloc[0]["vertex_mae"])
+            delta_vertex_mae = const_vertex_mae - orig_vertex_mae
+            delta_pct = (delta_vertex_mae / orig_vertex_mae * 100.0) if orig_vertex_mae else float("nan")
+
+            col_probe1, col_probe2 = st.columns([1.2, 1])
+            with col_probe1:
+                if probe_fig.exists():
+                    render_image_in_frame(probe_fig, "Probe MAE comparison", 380)
+                else:
+                    render_data_unavailable()
+            with col_probe2:
+                st.table(
+                    pd.DataFrame(
+                        {
+                            "variant": ["original", "constant_node_size", "delta"],
+                            "vertex_mae": [
+                                format_number(orig_vertex_mae, 3),
+                                format_number(const_vertex_mae, 3),
+                                f"{delta_vertex_mae:+.3f}",
+                            ],
+                        }
+                    )
+                )
+                st.markdown(
+                    f"""
+                    <div class="neobrutalist-card">
+                        <p style="font-size:0.9rem; margin:0;">
+                            Vertex MAE changes by <strong>{delta_vertex_mae:+.3f}</strong> when node size is forced constant, which is <strong>{delta_pct:+.1f}%</strong> relative to the original render. That jump means the model was relying on node-size cues, not topology alone, to count vertices.
+                        </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            render_data_unavailable()
+    else:
+        render_data_unavailable()
+
+    # ------------------------------------------------------------------
+    # 3) Layout sensitivity probe
+    # ------------------------------------------------------------------
+    st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
+    st.markdown('<p class="section-label">3. Layout-Sensitivity Probe</p>', unsafe_allow_html=True)
+
+    if probe_df is not None and {"breakdown", "variant", "vertex_mae"}.issubset(probe_df.columns):
+        probe_overall = probe_df[probe_df["breakdown"] == "overall"]
+        orig_row = probe_overall[probe_overall["variant"] == "original"]
+        alt_row = probe_overall[probe_overall["variant"] == "alt_layout"]
+        if not orig_row.empty and not alt_row.empty:
+            orig_vertex_mae = float(orig_row.iloc[0]["vertex_mae"])
+            alt_vertex_mae = float(alt_row.iloc[0]["vertex_mae"])
+            delta_vertex_mae = alt_vertex_mae - orig_vertex_mae
+            delta_pct = (delta_vertex_mae / orig_vertex_mae * 100.0) if orig_vertex_mae else float("nan")
+
+            col_layout1, col_layout2 = st.columns([1.2, 1])
+            with col_layout1:
+                if probe_fig.exists():
+                    render_image_in_frame(probe_fig, "Probe MAE comparison", 380)
+                else:
+                    render_data_unavailable()
+            with col_layout2:
+                st.table(
+                    pd.DataFrame(
+                        {
+                            "variant": ["original", "alt_layout", "delta"],
+                            "vertex_mae": [
+                                format_number(orig_vertex_mae, 3),
+                                format_number(alt_vertex_mae, 3),
+                                f"{delta_vertex_mae:+.3f}",
+                            ],
+                        }
+                    )
+                )
+                st.markdown(
+                    f"""
+                    <div class="neobrutalist-card">
+                        <p style="font-size:0.9rem; margin:0;">
+                            Vertex MAE changes by <strong>{delta_vertex_mae:+.3f}</strong> under the alternate layout, a <strong>{delta_pct:+.1f}%</strong> shift from the original layout. A non-zero shift means the model is partially sensitive to how the graph is arranged on the page, not just to the graph structure itself.
+                        </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            render_data_unavailable()
+    else:
+        render_data_unavailable()
+
+    # ------------------------------------------------------------------
+    # 4) Ink-coverage correlation and failure-case taxonomy
+    # ------------------------------------------------------------------
+    st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
+    st.markdown('<p class="section-label">4. Ink-Coverage Correlation & Failure-Case Taxonomy</p>', unsafe_allow_html=True)
+
+    corr_df = safe_read_csv(RESULTS_DIR / "ink_coverage_correlations.csv")
+    fail_df = safe_read_csv(RESULTS_DIR / "failure_case_summary.csv")
+    corr_ok = corr_df is not None and {"split", "metric_x", "metric_y", "pearson_r", "p_value", "n"}.issubset(corr_df.columns)
+    fail_ok = fail_df is not None and {"split", "category", "mean_vertex_mae", "mean_edge_mae", "n"}.issubset(fail_df.columns)
+
+    ink_fraction_label = "Ink fraction"
+    component_area_label = "Component area"
+
+    if corr_ok and fail_ok:
+        held_out_corr = corr_df[corr_df["split"] == "held_out"].copy()
+        held_out_corr = held_out_corr[["metric_x", "metric_y", "pearson_r", "p_value", "n"]]
+
+        ood_row = fail_df[(fail_df["split"] == "held_out") & (fail_df["category"] == "out_of_distribution_size")]
+        normal_row = fail_df[(fail_df["split"] == "held_out") & (fail_df["category"] == "in_distribution_normal")]
+
+        if not ood_row.empty and not normal_row.empty:
+            ood_vertex_mae = float(ood_row.iloc[0]["mean_vertex_mae"])
+            normal_vertex_mae = float(normal_row.iloc[0]["mean_vertex_mae"])
+            ood_edge_mae = float(ood_row.iloc[0]["mean_edge_mae"])
+            normal_edge_mae = float(normal_row.iloc[0]["mean_edge_mae"])
+            vertex_delta = ood_vertex_mae - normal_vertex_mae
+            edge_delta = ood_edge_mae - normal_edge_mae
+            vertex_ratio = (ood_vertex_mae / normal_vertex_mae) if normal_vertex_mae else float("nan")
+            edge_ratio = (ood_edge_mae / normal_edge_mae) if normal_edge_mae else float("nan")
+
+            col_ink1, col_ink2 = st.columns([1.1, 1])
+            with col_ink1:
+                if held_out_corr.empty:
+                    render_data_unavailable()
+                else:
+                    st.table(held_out_corr)
+                    st.markdown(
+                        f"""
+                        <div class="neobrutalist-card">
+                            <p style="font-size:0.9rem; margin:0;">
+                                {ink_fraction_label} is the share of the image covered by visible graph ink, while {component_area_label} is the average area of one connected visible blob. On the held-out split, the correlations stay modest: ink_fraction tracks node count weakly, and component_area is also only weakly related to node count.
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            with col_ink2:
+                st.table(
+                    pd.DataFrame(
+                        {
+                            "category": ["out_of_distribution_size", "in_distribution_normal", "contrast"],
+                            "mean_vertex_mae": [
+                                format_number(ood_vertex_mae, 3),
+                                format_number(normal_vertex_mae, 3),
+                                f"{vertex_delta:+.3f}",
+                            ],
+                            "mean_edge_mae": [
+                                format_number(ood_edge_mae, 3),
+                                format_number(normal_edge_mae, 3),
+                                f"{edge_delta:+.3f}",
+                            ],
+                        }
+                    )
+                )
+                st.markdown(
+                    f"""
+                    <div class="neobrutalist-card">
+                        <p style="font-size:0.9rem; margin:0;">
+                            The held-out out-of-distribution-size graphs are harder by <strong>{vertex_delta:+.3f}</strong> vertex MAE and <strong>{edge_delta:+.3f}</strong> edge MAE versus in-distribution-normal graphs, which is about <strong>{vertex_ratio:.1f}x</strong> and <strong>{edge_ratio:.1f}x</strong> worse respectively.
+                        </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            fig_col1, fig_col2, fig_col3 = st.columns(3)
+            with fig_col1:
+                render_image_in_frame(PROJECT_ROOT / "report" / "figures" / "ink_coverage_vs_node_count.png", "Ink coverage vs node count", 300)
+            with fig_col2:
+                render_image_in_frame(PROJECT_ROOT / "report" / "figures" / "component_size_vs_node_count.png", "Component size vs node count", 300)
+            with fig_col3:
+                render_image_in_frame(PROJECT_ROOT / "report" / "figures" / "worst_case_image_grid.png", "Worst-case image grid", 300)
+
+            fig_col4, fig_col5 = st.columns(2)
+            with fig_col4:
+                render_image_in_frame(PROJECT_ROOT / "report" / "figures" / "error_vs_num_nodes.png", "Error vs number of nodes", 380)
+            with fig_col5:
+                render_image_in_frame(PROJECT_ROOT / "report" / "figures" / "error_vs_density.png", "Error vs density", 380)
+        else:
+            render_data_unavailable()
+    else:
+        render_data_unavailable()
 
 
 def get_reproducibility_info() -> Tuple[str, str, str, str]:
@@ -1029,6 +1408,7 @@ def render_predict_section(
         
     # If uploaded is present, process it
     suffix = Path(active_file.name).suffix.lower()
+    is_graph_upload = suffix in (".graphml", ".csv", ".txt")
     
     # Try to find ground truth from dataset labels CSV for ANY type of file
     true_data = load_ground_truth_for_file(active_file.name)
@@ -1079,6 +1459,73 @@ def render_predict_section(
         render_hero_stat("Vertices", pred_v, "reveal-3")
     with stat_col2:
         render_hero_stat("Edges", pred_e, "reveal-4")
+
+    if is_graph_upload and G is not None:
+        st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="section-label">Multi-model comparison</p>',
+            unsafe_allow_html=True,
+        )
+
+        comparison_rows = [
+            {"Model": "CNN", "Predicted Vertices": pred_v, "Predicted Edges": pred_e},
+        ]
+
+        fallback_density = None
+
+        try:
+            gnn_model, fallback_density = load_graph_comparison_assets()
+            gcn_v, gcn_e = predict_gcn_graph_counts(gnn_model, G)
+            comparison_rows.append({"Model": "GCN", "Predicted Vertices": gcn_v, "Predicted Edges": gcn_e})
+        except Exception as exc:
+            comparison_rows.append({"Model": "GCN", "Predicted Vertices": "data unavailable", "Predicted Edges": "data unavailable"})
+            st.warning(f"GCN comparison unavailable: {exc}")
+            if fallback_density is None:
+                try:
+                    _, fallback_density = build_density_table(PROJECT_ROOT / "data" / "splits" / "train.csv")
+                except Exception:
+                    fallback_density = None
+
+        try:
+            if fallback_density is None:
+                raise RuntimeError("fallback density unavailable")
+            stat_v, stat_e = predict_graph_stat_counts(G, fallback_density)
+            comparison_rows.append({"Model": "Graph-statistic baseline", "Predicted Vertices": stat_v, "Predicted Edges": stat_e})
+        except Exception as exc:
+            comparison_rows.append({"Model": "Graph-statistic baseline", "Predicted Vertices": "data unavailable", "Predicted Edges": "data unavailable"})
+            st.warning(f"Graph-statistic comparison unavailable: {exc}")
+
+        comparison_df = pd.DataFrame(comparison_rows)
+        st.table(comparison_df)
+    else:
+        st.markdown(
+            "<div class='neobrutalist-card'><p style='font-size:0.9rem; margin:0;'>Only CNN inference is available for image uploads — GCN and the graph-statistic baseline require the underlying graph topology, which isn't recoverable from a rendered image alone.</p></div>",
+            unsafe_allow_html=True,
+        )
+
+    warning_data = load_warning_reference_data()
+    max_train_n = warning_data.get("max_train_n")
+
+    if is_graph_upload and G is not None:
+        warning_num_nodes = int(G.number_of_nodes())
+        warning_density = compute_density(int(G.number_of_nodes()), int(G.number_of_edges()))
+    else:
+        warning_num_nodes = int(pred_v)
+        warning_density = compute_density(int(pred_v), int(pred_e))
+
+    size_triggered = bool(max_train_n is not None and warning_num_nodes > int(max_train_n))
+    dense_triggered = density_bucket(warning_density) == "dense"
+
+    if size_triggered or dense_triggered:
+        st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
+        render_prediction_warning_banner(
+            warning_data,
+            warning_num_nodes,
+            warning_density,
+            is_graph_upload=is_graph_upload,
+            size_triggered=size_triggered,
+            dense_triggered=dense_triggered,
+        )
         
     # ── Grad-CAM ─────────────────────────────────────────────────────
     st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
@@ -1273,15 +1720,7 @@ def main() -> None:
         elif section == "Results":
             render_results_section()
         elif section == "Research Insights":
-            st.markdown('<p class="section-label">Research Insights</p>', unsafe_allow_html=True)
-            st.markdown(
-                """
-                <div class="neobrutalist-card" style="border-color: #D1D1D6;">
-                    <p style="font-size: 1.1rem; font-weight: 600; margin: 0;">Coming in the next update</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            render_research_insights_section()
         elif section == "Models":
             render_models_section(model)
 

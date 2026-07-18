@@ -12,3 +12,6 @@ data/splits/
 .vscode/
 .DS_Store
 Thumbs.db
+
+streamlit_8502.err
+streamlit_8502.out

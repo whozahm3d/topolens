@@ -20,6 +20,7 @@ from topolens_utils import ensure_dir, load_yaml_config, set_random_seeds
 
 try:
     from torch_geometric.data import Data
+    from torch_geometric.data import Batch
     from torch_geometric.loader import DataLoader
     from torch_geometric.nn import GCNConv, global_mean_pool
 except Exception as exc:  # pragma: no cover - import guard for environments without PyG
@@ -105,6 +106,30 @@ class GraphCountGCN(nn.Module):
 
     def num_parameters(self) -> int:
         return sum(parameter.numel() for parameter in self.parameters())
+
+
+def load_graph_count_gcn(checkpoint_path: Path) -> GraphCountGCN:
+    """Load a trained GraphCountGCN checkpoint and return an eval-ready model."""
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    cfg = checkpoint.get("config", {}) if isinstance(checkpoint, dict) else {}
+    model = GraphCountGCN(
+        hidden_dim=int(cfg.get("model", {}).get("baseline", {}).get("hidden_dim", 64)),
+        layers=int(cfg.get("model", {}).get("baseline", {}).get("layers", 3)),
+    )
+    state_dict = checkpoint["state_dict"] if isinstance(checkpoint, dict) and "state_dict" in checkpoint else checkpoint
+    model.load_state_dict(state_dict)
+    model.eval()
+    return model
+
+
+def predict_graph_counts(model: GraphCountGCN, graph: nx.Graph) -> tuple[int, int]:
+    """Predict vertex and edge counts for a single NetworkX graph."""
+    data = graphml_to_pyg_data(graph)
+    batch = Batch.from_data_list([data])
+    with torch.no_grad():
+        pred = model(batch)
+    counts = torch.expm1(pred).round().clamp_min(0)
+    return int(counts[0, 0].item()), int(counts[0, 1].item())
 
 
 def run_epoch(model, loader, criterion, optimizer=None, device="cpu"):

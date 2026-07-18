@@ -12,6 +12,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import networkx as nx
 import pandas as pd
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -37,6 +38,13 @@ def predict_edges(num_nodes: int, generator: str, density_table: dict[str, float
     density = density_table.get(generator, fallback_density)
     max_possible_edges = num_nodes * (num_nodes - 1) / 2
     return int(round(density * max_possible_edges))
+
+
+def predict_graph_counts(graph: nx.Graph, fallback_density: float) -> tuple[int, int]:
+    """Predict counts for a single graph using the global fallback density only."""
+    num_nodes = int(graph.number_of_nodes())
+    num_edges = predict_edges(num_nodes, generator="__global_fallback__", density_table={}, fallback_density=fallback_density)
+    return num_nodes, num_edges
 
 
 def load_rows(csv_path: Path) -> pd.DataFrame:
