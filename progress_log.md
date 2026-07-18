@@ -533,10 +533,18 @@ without retraining anything or touching prior-phase results.
   density from the CNN's own predicted counts, explicitly labeled as such.
   Added a short cross-link to Research Insights alongside the banner.
 - Verified live with `real_PROTEINS_0006.graphml` (336 nodes, well above the
-  100-node training ceiling): all three models compared correctly, warning
-  banner cited the real out-of-distribution MAE (vertex 96.64, edge 203.60),
-  cross-link rendered. Research Insights confirmed computing live values
-  matching source CSVs exactly.
+  100-node training ceiling, density 0.0145 — sparse bucket): all three
+  models compared correctly, warning banner cited the real out-of-distribution
+  size MAE (vertex 96.64, edge 203.60) alone, cross-link rendered. Research
+  Insights confirmed computing live values matching source CSVs exactly.
+- Closed the initial verification gap on the dual-trigger warning path (no
+  natural dataset example hit both size and density conditions at once): wrote
+  `evaluation/generate_dual_trigger_testcase.py` to construct a synthetic
+  Erdős–Rényi graph (150 nodes, p=0.5, seed=42) with known density 0.5003,
+  saved to `data/images_probe/dense_test_150n.graphml`. Uploaded it live and
+  confirmed the banner cites both the size MAE and the density MAE (vertex
+  0.43, edge 1.12) together in one message, with the cross-link rendered
+  beneath both.
 
 ### How
 
@@ -560,19 +568,23 @@ construction.
 silently treating it as ground truth?** There's no graph object to measure
 density from when the input is a raw image — only the CNN's own predictions.
 Presenting a model's self-referential estimate with the same confidence as
-a真-topology measurement would overstate what's actually known about the
-input.
+a ground-truth topology measurement would overstate what's actually known
+about the input.
+
+**Why build a synthetic graph instead of searching harder for a natural
+dual-trigger example?** No file in the current dataset happened to combine
+>100 nodes with density ≥0.40; rather than leave the combined-warning code
+path untested going into the final report, a deterministic synthetic
+counterexample (fixed seed, known density by construction) gives a
+reproducible, falsifiable verification instead of an assumed one.
 
 ### Issues
 
-- No natural example in the current dataset triggers both the size and
-  density warnings simultaneously — that code path was verified by review,
-  not by a live example.
-- `report/FINAL_REPORT.md` was still a skeleton going into this session
-  (see next).
+None outstanding — the dual-trigger gap noted mid-session was closed with a
+live test before end of session (see What was done).
 
 ### Next
 
 Populate `FINAL_REPORT.md` with real content from `progress_log.md`
-Days 1–5 and the full `evaluation/results/` + `report/figures/` set — no
+Days 1–6 and the full `evaluation/results/` + `report/figures/` set — no
 new analysis to run, only writing.
