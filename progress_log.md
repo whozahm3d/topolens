@@ -496,3 +496,83 @@ rather than the framework's out-of-the-box defaults.
 Write the final report: fill in the `FINAL_REPORT.md` skeleton with the
 Methodology, Results, Discussion, and Limitations sections, drawing on the
 data already in `evaluation/results/` and `report/figures/`.
+
+## Day 6 — 18 Jul 2026 — Batch 4b: Research Insights, Live Comparison, Warnings, Cross-Links
+
+### Goal
+
+Close out the app deliverable: replace the Research Insights placeholder with
+real analysis, extend Predict with live multi-model comparison and a
+context-aware limitations warning, and tie the app's sections together —
+without retraining anything or touching prior-phase results.
+
+### What was done
+
+- Split the batch into four independent Copilot prompts (Task M: Research
+  Insights; Task O: multi-model comparison; Task P+Q: warning + cross-link;
+  Verification) after the prior agentic session ran out of budget mid-batch —
+  each prompt self-contained with its own context, hard constraints, and
+  definition of done, so a fresh session with no memory of the others could
+  still complete its piece correctly.
+- Implemented `render_research_insights_section()`: four subsections
+  (Grad-CAM, shortcut-learning probe, layout-sensitivity probe, ink-coverage/
+  failure-taxonomy), each computing its stated numbers live from
+  `probe_summary.csv` / `ink_coverage_correlations.csv` /
+  `failure_case_summary.csv`, with independent graceful-degradation fallback
+  per subsection.
+- Implemented live multi-model comparison in Predict: graph-file uploads
+  (`.graphml`/`.csv`/`.txt`) run CNN + GCN + graph-statistic baseline side by
+  side; image-only uploads show CNN-only plus an explanatory line on why the
+  other two aren't available (they require topology, not pixels). Factored
+  single-graph inference helpers into `models/gnn_baseline.py` and
+  `models/graph_statistic_baseline.py` (previously batch-only).
+- Implemented a dynamic reduced-confidence warning banner: fires when a
+  graph's node count exceeds the training ceiling (derived live from
+  `train.csv`, not hardcoded) and/or its density falls in the dense bucket,
+  citing real held-out MAE for that category. Image-only uploads derive
+  density from the CNN's own predicted counts, explicitly labeled as such.
+  Added a short cross-link to Research Insights alongside the banner.
+- Verified live with `real_PROTEINS_0006.graphml` (336 nodes, well above the
+  100-node training ceiling): all three models compared correctly, warning
+  banner cited the real out-of-distribution MAE (vertex 96.64, edge 203.60),
+  cross-link rendered. Research Insights confirmed computing live values
+  matching source CSVs exactly.
+
+### How
+
+Splitting into four self-contained prompts (rather than one large spec, as
+in Batch 4a) was a direct response to running out of agentic-tool budget
+mid-task on the first attempt at this batch — smaller, independently
+verifiable units of work meant partial progress was usable and resumable
+across tool switches, rather than an all-or-nothing session.
+
+### Why
+
+**Why derive the warning's size/density thresholds live instead of
+hardcoding them?** The training ceiling and the dense-bucket boundary are
+both facts about the trained model and the dataset, not fixed constants —
+if the dataset or training data changes, a hardcoded threshold would
+silently go stale. Reading them from `train.csv` and
+`topolens_utils.density_bucket()` at runtime keeps the warning honest by
+construction.
+
+**Why label the image-only density estimate as predicted rather than
+silently treating it as ground truth?** There's no graph object to measure
+density from when the input is a raw image — only the CNN's own predictions.
+Presenting a model's self-referential estimate with the same confidence as
+a真-topology measurement would overstate what's actually known about the
+input.
+
+### Issues
+
+- No natural example in the current dataset triggers both the size and
+  density warnings simultaneously — that code path was verified by review,
+  not by a live example.
+- `report/FINAL_REPORT.md` was still a skeleton going into this session
+  (see next).
+
+### Next
+
+Populate `FINAL_REPORT.md` with real content from `progress_log.md`
+Days 1–5 and the full `evaluation/results/` + `report/figures/` set — no
+new analysis to run, only writing.

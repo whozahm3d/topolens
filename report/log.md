@@ -279,3 +279,36 @@
 - Added placeholders for Research Insights view.
 - Verified all sections locally via user-driven Streamlit run smoke tests; cleared syntax escape warning messages and container width deprecation warnings. No models were retrained and protected dataset/image files remain unchanged.
 
+# 2026-07-18 — Batch 4b: Research Insights section, live multi-model comparison, context-aware warnings, cross-links
+
+- Implemented `render_research_insights_section()` in `app/app.py`: four subsections
+  (Grad-CAM, shortcut-learning probe, layout-sensitivity probe, ink-coverage/failure-
+  taxonomy), each reading `probe_summary.csv` / `ink_coverage_correlations.csv` /
+  `failure_case_summary.csv` live via `safe_read_csv()`, with independent
+  `render_data_unavailable()` fallback per subsection on missing/malformed data.
+- Implemented live multi-model comparison in `render_predict_section()`: for
+  `.graphml`/`.csv`/`.txt` uploads, runs CNN + GCN + graph-statistic baseline side
+  by side; image-only uploads show CNN prediction plus an explanatory line on why
+  GCN/baseline aren't available. Added `predict_graph_counts()` single-graph
+  inference helpers to `models/gnn_baseline.py` and
+  `models/graph_statistic_baseline.py` (previously batch-only); no inference logic
+  reimplemented in `app.py`.
+- Implemented `render_prediction_warning_banner()`: fires on `num_nodes >
+  max_train_n` (derived from `data/splits/train.csv`) and/or
+  `density_bucket() == "dense"`, citing real MAE from `failure_case_summary.csv`
+  (`high_density_clutter` category present directly, no fallback needed). Image-only
+  uploads derive density from the CNN's own predicted counts, labeled explicitly as
+  predicted, not ground truth. Both triggers cited together when both fire.
+- Added cross-link text ("See Research Insights → Failure-Case Taxonomy...")
+  inline with the warning banner (Task Q).
+- Verified live via `real_PROTEINS_0006.graphml` (336 nodes / 816 edges, exceeds
+  `max_train_n=100`): CNN pred 73/81, GCN pred 29/74, graph-statistic baseline pred
+  336/15448; size-warning banner correctly cited vertex MAE 96.64 / edge MAE 203.60.
+  Research Insights subsections confirmed rendering live-computed values matching
+  source CSVs exactly (e.g. shortcut-learning delta +7.050 / +205.8%).
+- Dual-trigger (size + density simultaneously) path not exercised by a natural
+  dataset example in this dataset; verified by code review of
+  `render_prediction_warning_banner()` only, not a live example.
+- No retraining occurred. `data/images/`, `data/splits/`,
+  `data/processed/labels_processed.csv`, `evaluation/results/*.csv`, and
+  `report/figures/*.png` confirmed unchanged.
