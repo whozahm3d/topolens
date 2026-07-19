@@ -108,6 +108,58 @@ on the held-out split is the headline finding for this section. See also
 `report/figures/error_vs_num_nodes.png`, `report/figures/error_vs_density.png`,
 and `report/figures/worst_case_image_grid.png`._
 
+### 5.6 Live-App Validation: Spot Check & Novel-Image Sanity Check
+
+_Populated from `evaluation/results/topolens_spotcheck_results.csv` (Part 1) and
+`evaluation/results/topolens_novelimage_results.csv` (Part 2). Unlike Sections
+5.1–5.5, which analyze the offline held-out/test split, this section validates
+the deployed app's live inference path — including the warning banner and
+multi-model comparison — against inputs chosen and uploaded after training._
+
+**Part 1 — 23-graph live-app spot check.** Deliberately selected `.graphml`
+graphs spanning every generator, density bucket, and the 100-node training
+ceiling, uploaded through the Predict page to exercise CNN + GCN +
+graph-statistic baseline together. Clean in-distribution graphs (11 of 23, no
+warning fired) produced CNN vertex MAE ≈5.6 and edge MAE ≈17.7, consistent
+with the offline held-out figures in Section 5.5. Two findings refine the
+offline analysis:
+
+- **Density and size interact.** Dense-flagged graphs that are also large
+  (one 99-node dense graph, edge error 1,084) failed far worse than
+  dense-but-small/medium graphs (edge errors 1–32), despite the warning
+  banner citing the same dense-bucket MAE (1.12) for both. The dense-bucket
+  warning's historical MAE appears to understate risk specifically for
+  graphs that are dense _and_ large.
+- **GCN degraded more than the CNN on out-of-distribution size**, contrary
+  to the expectation that a graph-native model generalizes better on size
+  than an image-based one (mean vertex error 237 vs. CNN 179; mean edge
+  error 428 vs. CNN 336; n=6 OOD-size graphs). This bears directly on the
+  Section 1 research question and is addressed in Section 6.
+
+**Part 2 — 7-image novel-image sanity check (no ground truth).** Tested the
+app against images never seen during training: a scanned academic figure, a
+digitally hand-drawn directed graph, a cartoon-icon diagram, two clean-vector
+diagrams in unfamiliar styles, one image close in style to the training
+renders, and one full uncropped notebook photo (tested standalone,
+containing two diagrams plus prose). Predicted vertex/edge counts scaled
+with _visual unfamiliarity relative to the training render style_, not with
+hand-drawn-ness per se: the image closest in style to training renders had
+the smallest relative overcount (~1.6x); the two furthest (rectangle/text
+nodes, dense numeric-edge-label network) had the largest, up to a predicted
+474 vertices on one case (~4.7x the training ceiling).
+
+**Revised combinatorial-plausibility claim.** Section 5.5 previously stated
+(via the Part 3 free-item check) that zero predictions across the 1,676
+held-out/test set ever have predicted edges exceed the maximum possible
+edges for the predicted vertex count. This holds for all 1,676 offline
+predictions and 29 of the 30 live-app predictions collected in Parts 1–2. The
+one exception is the uncropped notebook photo above: predicted V=5, E=19,
+where the combinatorial maximum for 5 vertices is 10. This is best explained
+as an input-distribution failure — the only image tested that combined
+multiple diagrams and prose text in one frame — rather than a breakdown of
+the property under normal single-graph input. The claim should be stated as
+qualified, not absolute, going forward.
+
 ---
 
 ## 6. Discussion
@@ -129,6 +181,18 @@ _Written by hand. Must cover:_
 - _Image resolution and node-size tradeoffs (224 × 224 px, node radius formula)_
 - _The empirically confirmed node-size shortcut (Section 5.2 probe finding)_
 - _The out-of-distribution size ceiling (n > 100; Section 5.5 MAE values)_
+- _Dense-bucket warning miscalibration for large dense graphs (Section 5.6:
+  dense-but-large graphs fail far worse than the cited dense-bucket MAE
+  suggests — the warning's historical accuracy figure is likely dominated by
+  small dense graphs)_
+- _GCN baseline's out-of-distribution-size degradation (Section 5.6: on the
+  live spot check, the GCN baseline degraded more than the CNN on
+  OOD-size graphs, n=6 — small sample, worth naming as a limitation of the
+  baseline comparison's generalizability rather than a settled result)_
+- _Combinatorial-plausibility claim is empirically qualified, not absolute
+  (Section 5.6: one exception found out of 30 live-app predictions, on an
+  input — multiple diagrams plus text in one frame — outside anything seen
+  in training)_
 
 ---
 
@@ -181,6 +245,8 @@ node-count input conditioning, and extension to directed or weighted graphs._
 | `cnn_worst_edge_errors.csv` | Worst-error graphs for CNN edge prediction |
 | `cnn_training_log.csv` | Epoch-level CNN training log |
 | `gnn_training_log.csv` | Epoch-level GNN training log |
+| `topolens_spotcheck_results.csv` | Live-app spot check: 23 graphs, CNN/GCN/baseline predictions, warning-fired status (Section 5.6, Part 1) |
+| `topolens_novelimage_results.csv` | Live-app novel-image sanity check: 7 images, no ground truth, combinatorial-plausibility check (Section 5.6, Part 2) |
 
 ### Application (`app/`)
 

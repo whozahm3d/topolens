@@ -355,3 +355,53 @@
     and GCN, consistent with the Part 3 finding across the full 1,676-prediction set.
     Graph-statistic baseline showed the opposite failure mode: exact vertices, edges
     overestimated ~30–40x at this scale.
+
+# 2026-07-19 — Novel-image sanity check (Part 2): 7 images, no ground truth
+
+- Uploaded 7 non-dataset images via the Predict page (image-upload path, CNN-only
+  inference) per Part 2 of the testing plan: a genuine scanned academic figure, a
+  clean-vector unfamiliar-layout diagram, a digitally hand-drawn directed graph
+  (rectangle nodes), a cartoon-icon social network, a weighted network with numeric
+  edge labels, a near-training-style circular-node render, and — tested first,
+  standalone — a photographed notebook page containing two hand-drawn diagrams plus
+  prose.
+- Full results (predicted V/E, estimated density, warning-fired status,
+  combinatorial-plausibility check) compiled into
+  `evaluation/results/topolens_novelimage_results.csv`.
+- Finding: predicted vertex/edge counts scale with visual unfamiliarity relative to
+  training-render style, not with hand-drawn-ness per se. The two images closest in
+  visual grammar to training renders (clean vector diagrams) had the smallest
+  relative overcounts (~1.6–2x); the two furthest (rectangle+text nodes, dense
+  numeric-edge-label network) had the largest, up to predicted V=474 on one case
+  (~4.7x the n=100 training ceiling).
+- Combinatorial-plausibility violation found: the standalone full-page photo (two
+  diagrams + handwritten prose, never cropped to isolate a single graph) predicted
+  V=5, E=19 — 19 exceeds the maximum 10 possible edges for 5 vertices. This is the
+  only violation found across all live-app testing to date (29/30 combined Part 1 +
+  Part 2 predictions stayed combinatorially plausible). Grad-CAM for this case showed
+  attention spread across both diagrams and bleeding onto the prose text, consistent
+  with the image sitting outside anything in the training distribution (always a
+  single clean graph, no accompanying text or second diagram). Not fully isolated
+  from hand-drawn style itself — the two other real hand-drawn/scanned images in this
+  batch, both cropped to a single diagram, stayed plausible, which is reasonable but
+  indirect evidence that clutter, not hand-drawn style, was the cause.
+- Data quality note: OCR-based extraction of the Streamlit metric numbers from
+  screenshots was unreliable for several values (large bold display font resists
+  automated digit segmentation at screenshot resolution); final numbers for 4 of 7
+  images were confirmed directly by the user rather than extracted.
+
+# 2026-07-19 — Part 3: revised combinatorial-plausibility claim
+
+- The Phase 3 finding "zero predictions ever have `pred_num_edges` exceed max
+  possible edges for predicted vertices" (originally confirmed against
+  `failure_case_categories.csv`, 1,676 held-out + test predictions) needs updating
+  in light of the Part 2 finding above.
+- Revised claim: the property holds across all 1,676 offline held-out/test
+  predictions and across 29 of 30 live-app predictions collected in Parts 1–2 (23
+  `.graphml` uploads + 7 novel images). The single exception
+  (`handwritten_graph_1.jpeg`, full uncropped notebook page) is best explained as an
+  input-distribution failure (multi-diagram + text in one frame), not a breakdown of
+  the property under normal single-graph input.
+- Action: update the corresponding claim in `FINAL_REPORT.md` (added to Section 5.6)
+  from an unqualified "never" to the qualified form above. No new computation
+  required — this is a data-driven correction, not new analysis.
