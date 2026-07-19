@@ -321,3 +321,37 @@
 - No retraining occurred. `data/images/`, `data/splits/`,
   `data/processed/labels_processed.csv`, `evaluation/results/*.csv`, and
   `report/figures/*.png` confirmed unchanged.
+
+# 2026-07-19 — Live-app spot check (Part 1): 23-graph test round
+
+- Ran the 23-graph live-app spot check per `topolens_testing_and_research_extension_plan.md`
+  Part 1: each graph uploaded via the Predict page as a `.graphml` file (not image),
+  exercising the full Batch 4b path (CNN + GCN + graph-statistic baseline, warning
+  banner, ground-truth lookup) in one pass.
+- Data quality issue found and corrected: test #3 (`syn_watts_strogatz_small_0031.graphml`)
+  initially returned ground truth V=72/E=272 instead of the expected V=13/E=39 — wrong
+  file had been uploaded. Retested with the correct file; ground truth now matches the
+  plan (V=13, E=39, density 0.5000), dense-bucket warning fired as expected. All other
+  22/23 rows' app-reported ground truth matched the plan's stated true V/E exactly on
+  first pass.
+- Full results (CNN/GCN/baseline predictions, absolute errors, warning-fired status)
+  compiled into `evaluation/results/spotcheck_results.csv`.
+- Headline findings:
+  - Clean in-distribution graphs (11 of 23, no warning fired): CNN vertex MAE ≈5.6,
+    edge MAE ≈17.7 — consistent with held-out `failure_case_summary.csv` in-distribution
+    figures (6.67 / 20.79).
+  - Density + size interaction: dense-flagged graphs that are also large (99-node dense
+    graph, edge error 1084) fail far worse than dense-but-small/medium graphs (edge
+    errors 1–32), despite both citing the same dense-bucket MAE (1.12) in the warning.
+    Candidate refinement for Failure-Case Taxonomy / Limitations.
+  - 99-vs-101-node boundary pair (#20/#21): vertex error close (23 vs 30), edge error
+    diverges more (56 vs 119) — partially supports "soft degradation not a cliff" for
+    vertex count, less so for edge count.
+  - GCN degraded more than CNN on out-of-distribution-size graphs in this sample (mean
+    vertex error 237 vs CNN 179; mean edge error 428 vs CNN 336, n=6) — counter to the
+    expectation that the graph-native baseline generalizes better on size than the
+    image-based CNN. Worth addressing directly in the report, not assumed away.
+  - Far-OOD predictions (504/620-node graphs) stayed combinatorially plausible for CNN
+    and GCN, consistent with the Part 3 finding across the full 1,676-prediction set.
+    Graph-statistic baseline showed the opposite failure mode: exact vertices, edges
+    overestimated ~30–40x at this scale.

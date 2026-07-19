@@ -588,3 +588,85 @@ live test before end of session (see What was done).
 Populate `FINAL_REPORT.md` with real content from `progress_log.md`
 Days 1–6 and the full `evaluation/results/` + `report/figures/` set — no
 new analysis to run, only writing.
+
+---
+
+## Day 7 — 19 Jul 2026 — Live-App Spot Check (Part 1): 23-Graph Test Round
+
+### Goal
+
+Before writing `FINAL_REPORT.md`'s Discussion/Limitations sections, stress-test
+the deployed app's *live* inference path — not just the offline evaluation
+notebooks — against a deliberately chosen spread of graphs spanning every
+generator, density bucket, and, most importantly, the training-size boundary
+(100 nodes), to confirm the warning banner and multi-model comparison behave
+correctly on real uploads before those claims go into the report.
+
+### What was done
+
+- Selected 23 graphs per `topolens_testing_and_research_extension_plan.md`
+  Part 1: in-distribution ER/BA/WS/tree/dense synthetic graphs, in-distribution
+  real MUTAG/PROTEINS graphs, dense-bucket graphs, a pair straddling the
+  100-node ceiling (99 vs 101 nodes), and two far-OOD real graphs (504 and
+  620 nodes, up to ~6x the training ceiling).
+- Uploaded each as a `.graphml` file via the Predict page (not an image),
+  exercising the full CNN + GCN + graph-statistic baseline comparison and
+  warning-banner path together.
+- Compiled results into `evaluation/results/spotcheck_results.csv`: true V/E,
+  all three models' predictions, absolute errors, and warning-fired status
+  per graph.
+- Found and corrected a data integrity issue: the file uploaded for slot #3
+  (labeled `syn_watts_strogatz_small_0031.graphml`) returned app-reported
+  ground truth V=72/E=272 instead of the expected V=13/E=39 — the wrong file
+  had been uploaded. Retested with the correct file; ground truth then
+  matched the plan exactly (V=13, E=39, density 0.5000, dense-bucket warning
+  fired as expected). All other 22 of 23 slots matched the plan on first pass.
+
+### How
+
+Each graph was chosen for a specific comparison, not sampled randomly — e.g.
+the 99/101-node pair exists purely to test whether the 100-node warning
+threshold reflects a real accuracy cliff or a continuous degradation the
+cutoff happens to bisect. Ground truth for every graph was taken from the
+app's own live lookup, not re-typed from the plan, specifically so a mismatch
+between the intended test graph and the actually-uploaded file would surface
+as a data problem rather than silently corrupting the analysis — which is
+exactly what happened with slot #3.
+
+### Why
+
+**Why test the live app instead of trusting the existing offline held-out
+numbers?** The held-out MAE figures in `failure_case_summary.csv` are correct
+but abstract — they say nothing about whether the deployed warning banner
+actually fires at the right moment, cites the right numbers, and behaves
+sanely on a graph a person actually uploads. This round validates the
+user-facing product, not the already-known Phase 3 numbers.
+
+**Why treat the #3 mismatch as a stop-and-fix issue instead of noting it as
+an outlier?** An outlier is a real result that happens to be extreme; a wrong
+file upload is not a result at all — it would have silently removed the
+batch's only sparse-small synthetic data point and replaced it with an
+unlabeled 72-node graph. Catching this before folding it into aggregate
+statistics matters more than the convenience of not re-running one test.
+
+**Why flag that the GCN degraded more than the CNN on OOD-size graphs in this
+sample, rather than smoothing over it?** It runs against the project's
+working assumption that a graph-native model should be inherently more
+size-robust than an image-based one. Reporting it as observed, with the
+appropriate n=6 caveat, is more honest than omitting it because it
+complicates the CNN-vs-GNN narrative — and it's exactly the kind of finding
+the report's Discussion section exists to surface.
+
+### Issues
+
+None blocking. The #3 upload error is resolved (see What was done). Some
+breakdowns (e.g. the OOD-size bucket, n=6) are small enough that findings
+should be framed as directional, not definitive — full statistical treatment
+is still pending Part 4.
+
+### Next
+
+Part 2 (novel/hand-drawn image sanity check) and, if pursued, the "free"
+Part 4 analyses (Wilcoxon significance test, pixel-only ink-fraction
+baseline, warning-banner validation against `failure_case_categories.csv`) —
+then fold everything into `FINAL_REPORT.md`.

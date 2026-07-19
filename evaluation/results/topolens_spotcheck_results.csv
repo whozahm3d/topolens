@@ -1,0 +1,24 @@
+plan_id,file,true_vertices,true_edges,cnn_v,cnn_e,gcn_v,gcn_e,baseline_v,baseline_e,cnn_v_err,cnn_e_err,gcn_v_err,gcn_e_err,baseline_v_err,baseline_e_err,warning_fired,warning_type,notes
+1,syn_erdos_renyi_large_0088,63,309,55,303,23,54,63,536,8,6,40,255,0,227,N,,
+2,syn_barabasi_albert_large_0044,54,200,51,162,35,60,54,393,3,38,19,140,0,193,N,,
+3,syn_watts_strogatz_small_0031,13,39,12,37,17,73,13,21,1,2,4,34,0,18,Y,dense,"Retest with correct file (first attempt had wrong upload, see prior note history)"
+4,syn_random_tree_tiny_0112,8,7,8,6,23,32,8,8,0,1,15,25,0,1,N,,
+5,syn_dense_large_0069,99,2805,94,1721,20,93,99,1332,5,1084,79,2712,0,1473,Y,dense,
+6,syn_erdos_renyi_small_0113,15,16,14,16,19,16,15,29,1,0,4,0,0,13,N,,
+7,syn_watts_strogatz_large_0057,56,112,51,102,28,81,56,423,5,10,28,31,0,311,N,,
+8,syn_dense_medium_0067,44,436,45,468,27,152,44,260,1,32,17,284,0,176,Y,dense,
+9,syn_dense_large_0016,58,973,61,956,27,164,58,454,3,17,31,809,0,519,Y,dense,
+10,real_MUTAG_0026,13,13,13,10,12,17,13,21,0,3,1,4,0,8,N,,
+11,real_MUTAG_0004,19,22,18,21,13,35,19,47,1,1,6,13,0,25,N,,
+12,real_PROTEINS_0964,26,47,20,29,19,48,26,89,6,18,7,1,0,42,N,,
+13,real_PROTEINS_0820,22,44,20,30,28,51,22,63,2,14,6,7,0,19,N,,
+14,real_PROTEINS_0484,38,79,25,31,29,59,38,193,13,48,9,20,0,114,N,,
+15,real_PROTEINS_0274,105,178,78,107,32,41,105,1499,27,71,73,137,0,1321,Y,ood_size,
+16,real_PROTEINS_0586,134,200,91,128,27,34,134,2446,43,72,107,166,0,2246,Y,ood_size,
+17,real_PROTEINS_0236,116,255,40,43,20,42,116,1831,76,212,96,213,0,1576,Y,ood_size,
+18,real_PROTEINS_1001,5,9,6,7,11,32,5,3,1,2,6,23,0,6,Y,dense,
+19,real_PROTEINS_0706,7,14,7,15,31,115,7,6,0,1,24,101,0,8,Y,dense,
+20,real_PROTEINS_0143,99,156,76,100,21,26,99,1332,23,56,78,130,0,1176,N,,"1 node under the n>100 ceiling"
+21,real_PROTEINS_0043,101,220,71,101,23,52,101,1386,30,119,78,168,0,1166,Y,ood_size,"1 node over the n>100 ceiling, pairs with #20"
+22,real_PROTEINS_0245,504,894,121,214,18,14,504,34792,383,680,486,880,0,33898,Y,ood_size,"far OOD, ~5x ceiling"
+23,real_PROTEINS_0077,620,1049,105,190,36,44,620,52670,515,859,584,1005,0,51621,Y,ood_size,"largest graph in dataset, ~6x ceiling"
