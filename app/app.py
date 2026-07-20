@@ -15,6 +15,8 @@ import importlib.metadata
 import subprocess
 from pathlib import Path
 from typing import Optional, Tuple
+import hashlib
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -1349,6 +1351,62 @@ def render_models_section(model: CustomCNNRegressor) -> None:
             st.markdown("##### GCN Training & Validation Loss")
             st.line_chart(df_gnn_plot)
 
+def save_novel_upload(
+    pil_img: Image.Image,
+    original_filename: str,
+    source_type: str,
+    pred_v: float,
+    pred_e: float,
+    true_v: Optional[int] = None,
+    true_e: Optional[int] = None,
+    pred_v_gcn: Optional[float] = None,
+    pred_e_gcn: Optional[float] = None,
+    pred_v_stat: Optional[float] = None,
+    pred_e_stat: Optional[float] = None,
+) -> None:
+    """Persist a live-app upload + its CNN prediction to data/novel_uploads/.
+
+    Kept separate from data/novel_images/ (the hand-curated validation set used
+    in the report) so automatic logging never mixes with or overwrites that set.
+    Deduplicates by image content hash so Streamlit reruns don't create repeat rows.
+    Best-effort: logging failures never break the UI.
+    """
+    upload_dir = PROJECT_ROOT / "data" / "novel_uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = upload_dir / "manifest.csv"
+
+    buf = io.BytesIO()
+    pil_img.save(buf, format="PNG")
+    img_bytes = buf.getvalue()
+    content_hash = hashlib.sha256(img_bytes).hexdigest()[:16]
+
+    manifest_df = pd.read_csv(manifest_path) if manifest_path.exists() else pd.DataFrame()
+    if not manifest_df.empty and content_hash in manifest_df["content_hash"].values:
+        return  # already logged this exact image
+
+    saved_name = f"{content_hash}.png"
+    with open(upload_dir / saved_name, "wb") as f:
+        f.write(img_bytes)
+
+    new_row = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "content_hash": content_hash,
+        "saved_filename": saved_name,
+        "original_filename": original_filename,
+        "source_type": source_type,
+        "pred_vertices_cnn": round(float(pred_v), 2),
+        "pred_edges_cnn": round(float(pred_e), 2),
+        "pred_vertices_gcn": round(float(pred_v_gcn), 2) if pred_v_gcn is not None else "",
+        "pred_edges_gcn": round(float(pred_e_gcn), 2) if pred_e_gcn is not None else "",
+        "pred_vertices_baseline": round(float(pred_v_stat), 2) if pred_v_stat is not None else "",
+        "pred_edges_baseline": round(float(pred_e_stat), 2) if pred_e_stat is not None else "",
+        "true_vertices": true_v if true_v is not None else "",
+        "true_edges": true_e if true_e is not None else "",
+    }
+    manifest_df = pd.concat([manifest_df, pd.DataFrame([new_row])], ignore_index=True)
+    manifest_df.to_csv(manifest_path, index=False)
+
+
 # ---------------------------------------------------------------------------
 # Predict view components (Refactored)
 # ---------------------------------------------------------------------------
@@ -1459,6 +1517,8 @@ def render_predict_section(
         render_hero_stat("Vertices", pred_v, "reveal-3")
     with stat_col2:
         render_hero_stat("Edges", pred_e, "reveal-4")
+    
+    gcn_v = gcn_e = stat_v = stat_e = None
 
     if is_graph_upload and G is not None:
         st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
@@ -1502,6 +1562,23 @@ def render_predict_section(
             "<div class='neobrutalist-card'><p style='font-size:0.9rem; margin:0;'>Only CNN inference is available for image uploads — GCN and the graph-statistic baseline require the underlying graph topology, which isn't recoverable from a rendered image alone.</p></div>",
             unsafe_allow_html=True,
         )
+    
+    try:
+        save_novel_upload(
+            pil_img=pil_img,
+            original_filename=active_file.name,
+            source_type="graph_upload" if is_graph_upload else "image_upload",
+            pred_v=pred_v,
+            pred_e=pred_e,
+            true_v=true_v_csv,
+            true_e=true_e_csv,
+            pred_v_gcn=gcn_v,
+            pred_e_gcn=gcn_e,
+            pred_v_stat=stat_v,
+            pred_e_stat=stat_e,
+        )
+    except Exception:
+        pass
 
     warning_data = load_warning_reference_data()
     max_train_n = warning_data.get("max_train_n")
