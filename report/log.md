@@ -405,3 +405,65 @@
 - Action: update the corresponding claim in `FINAL_REPORT.md` (added to Section 5.6)
   from an unqualified "never" to the qualified form above. No new computation
   required — this is a data-driven correction, not new analysis.
+
+# 2026-07-20 — Part 4 (free items): Wilcoxon probe significance + warning-banner validation
+
+- Ran the two "free" Part 4 analyses that required no new data collection, only
+  statistical treatment of existing CSVs (`probe_predictions.csv`,
+  `failure_case_categories.csv`). Full results compiled into
+  `evaluation/results/topolens_part4_free_analyses_results.csv`.
+
+**Wilcoxon signed-rank test on probe deltas (n=40, paired per graph):**
+
+- Shortcut probe (`constant_node_size` vs. `original`): vertex error worsened
+  significantly (median 1.0 → 11.0, p=3.6e-06, 33/40 graphs worse) — confirms
+  the node-size shortcut with a real significance test, not just a summary MAE
+  delta. Edge error required care: the mean *appears* to improve
+  (54.18 → 39.80) but this is an artifact of two extreme outlier graphs
+  (`syn_dense_large_0069`, `syn_dense_large_0055` — both dense+large, the same
+  failure mode flagged in the Part 1 spot check). The median tells the real
+  story (3.5 → 20.0, 35/40 graphs worse, p=0.0003 significant in the
+  worsening direction). **Report median/win-loss counts for this comparison,
+  not the mean** — the mean is directionally backwards from what actually
+  happens to most graphs.
+- Layout probe (`alt_layout`/Kamada-Kawai vs. `original`): no significant
+  effect on either vertex (p=0.499) or edge (p=0.898) error. Median delta is
+  0 for vertices, ~1.0 for edges; win/loss splits are near coin-flips
+  (17/16 and 18/16). The apparent -18.65 mean edge delta is driven almost
+  entirely by one outlier (`syn_dense_large_0069` again, delta -512). Clean
+  null result — the model is not meaningfully sensitive to sfdp vs.
+  Kamada-Kawai layout, which is good news for the Limitations section and
+  contradicts what raw mean MAE alone would have suggested.
+
+**Warning-banner (dense bucket) validation, holding size constant via bins,
+using all 1,676 held-out+test predictions in `failure_case_categories.csv`:**
+
+- Naive flagged-vs-unflagged comparison (mixing dense-bucket with
+  OOD-size) shows flagged graphs have higher mean error, appearing to
+  validate the banner — but this is confounded, and even at that level the
+  median is actually *lower* for flagged graphs (1.0 vs 3.0 vertex error),
+  which should have been a red flag on its own.
+- Deconfounded by binning on `num_nodes` (0–15, 15–30, 30–50, 50–75,
+  75–100) and comparing dense vs. sparse within each bin:
+  - **Vertex prediction: the dense-bucket warning is backwards.** Dense
+    graphs have lower vertex error than sparse graphs at every single size
+    bin (e.g. 75–100 nodes: dense median 5.0 vs. sparse median 21.0). Dense
+    is the *safest* bucket for vertex count, not a risk flag.
+  - **Edge prediction: the warning is directionally right but badly
+    size-miscalibrated.** Dense and sparse edge error are tied at the
+    smallest size (0–15 nodes, median ~1.0 both), then diverge steadily as
+    size grows, crossing over around 15–30 nodes and reaching a 3.3x gap by
+    75–100 nodes (dense median 224.0 vs. sparse median 67.5). This is the
+    full 1,676-graph statistical confirmation of the Part 1 spot-check
+    finding that dense+large graphs are the real failure mode, not density
+    alone.
+- Action: the current dense-bucket warning text (flat MAE citation of
+  0.43/1.12) conflates two graphs with opposite risk profiles and should
+  ideally be split into a size-aware version (dense+small: reliable;
+  dense+large: high risk) — flagged as a concrete, evidence-backed
+  recommendation for `FINAL_REPORT.md` Limitations / Future Work.
+
+**Not run:** pixel-only ink-fraction baseline (Part 4 free item 3) —
+requires per-graph raw `ink_fraction` values, which don't exist in any
+currently exported CSV (`ink_coverage_correlations.csv` only has aggregated
+Pearson r). Needs the raw per-graph pass regenerated before this can be run.

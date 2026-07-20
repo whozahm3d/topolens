@@ -85,11 +85,38 @@ constant node size is the primary quantitative evidence for or against
 node-size shortcut exploitation. See also `report/figures/probe_variant_mae_comparison.png`
 and `report/figures/probe_variant_examples_grid.png`._
 
+> **Note:** When discussing this section, you can add the following sentence
+to your report to bring in the statistical significance results from the
+additional notebook:
+
+**Statistical significance (Wilcoxon signed-rank, n=40 paired graphs).**
+Populated from `evaluation/results/topolens_part4_free_analyses_results.csv`.
+The vertex-error increase under `constant_node_size` is significant
+(median 1.0 → 11.0, p=3.6×10⁻⁶, 33/40 graphs worse), confirming the shortcut
+with a formal test rather than a summary MAE delta alone. The edge-error
+comparison requires care: mean edge error appears to _improve_
+(54.18 → 39.80), but this is an artifact of two extreme-outlier dense-large
+graphs; the median (3.5 → 20.0, 35/40 graphs worse) and the Wilcoxon test
+itself (p=0.0003, significant in the worsening direction) both confirm the
+shortcut also degrades edge prediction for the large majority of graphs.
+Report median and win/loss counts alongside — or instead of — the mean for
+this comparison.
+
 ### 5.3 Layout-Sensitivity Probe
 
 _Populate from `evaluation/results/probe_summary.csv` — compare `original` vs.
 `alt_layout` (Kamada-Kawai) variant rows, broken down by tier. Assess whether
 the model is overfit to `sfdp` layout topology._
+
+**Statistical significance (Wilcoxon signed-rank, n=40 paired graphs).** No
+significant layout effect was found on either vertex (p=0.499) or edge
+(p=0.898) error under the `alt_layout` (Kamada-Kawai) variant. Median deltas
+are 0 (vertex) and ~1.0 (edge), with near-even win/loss splits (17/16 and
+18/16). The −18.65 mean edge-error delta that a naive summary would report
+is driven almost entirely by a single outlier graph. **This is a clean null
+result: the model is not meaningfully overfit to the `sfdp` layout
+algorithm**, which should be stated plainly in Section 7 (Limitations) rather
+than assumed as a risk.
 
 ### 5.4 Ink-Coverage Correlational Analysis
 
@@ -148,7 +175,7 @@ the smallest relative overcount (~1.6x); the two furthest (rectangle/text
 nodes, dense numeric-edge-label network) had the largest, up to a predicted
 474 vertices on one case (~4.7x the training ceiling).
 
-**Revised combinatorial-plausibility claim.** Section 5.5 previously stated
+**Part 3 — revised combinatorial-plausibility claim.** Section 5.5 previously stated
 (via the Part 3 free-item check) that zero predictions across the 1,676
 held-out/test set ever have predicted edges exceed the maximum possible
 edges for the predicted vertex count. This holds for all 1,676 offline
@@ -159,6 +186,34 @@ as an input-distribution failure — the only image tested that combined
 multiple diagrams and prose text in one frame — rather than a breakdown of
 the property under normal single-graph input. The claim should be stated as
 qualified, not absolute, going forward.
+
+**Part 4 (free items) — warning-banner validation.** Using all 1,676
+held-out+test predictions in `failure_case_categories.csv`, binned by
+`num_nodes` to hold size roughly constant, the dense-bucket warning's
+validity depends entirely on which target it's warning about:
+
+- For **vertex count**, the warning is backwards — dense graphs have lower
+  error than sparse graphs at every size bin tested (e.g. 75–100 nodes:
+  dense median error 5.0 vs. sparse 21.0). Dense is the safest bucket for
+  vertex prediction, not a risk signal.
+- For **edge count**, the warning is directionally correct but
+  size-miscalibrated. Dense and sparse edge error are statistically tied at
+  small sizes, then diverge sharply with size, reaching a 3.3x gap by
+  75–100 nodes (dense median 224.0 vs. sparse median 67.5) — full-population
+  confirmation of the dense+large failure mode identified in the Part 1 spot
+  check (Section 5.6 above).
+
+- _The dense-bucket warning conflates two opposite risk profiles (Section
+  5.6, Part 4): safe for vertex prediction at all sizes, safe for edge
+  prediction only at small sizes, high-risk for edge prediction at large
+  sizes. Recommend a size-aware warning split rather than the current flat
+  MAE citation._
+
+The current single "dense bucket" warning (flat MAE citation of 0.43/1.12)
+therefore conflates two graphs with opposite risk profiles. A size-aware
+warning — distinguishing dense+small (reliable) from dense+large
+(high-risk) — would be both more accurate and more actionable; noted as a
+concrete recommendation in Section 7.
 
 ---
 
