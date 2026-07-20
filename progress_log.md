@@ -670,3 +670,113 @@ Part 2 (novel/hand-drawn image sanity check) and, if pursued, the "free"
 Part 4 analyses (Wilcoxon significance test, pixel-only ink-fraction
 baseline, warning-banner validation against `failure_case_categories.csv`) —
 then fold everything into `FINAL_REPORT.md`.
+
+## Day 9 — 20 Jul 2026 — Part 4: Statistical Significance, Warning-Banner Validation, Pixel-Only Baseline, Structural Correlations
+
+### Goal
+
+Close out the testing plan's "free" tier — four analyses that needed no new
+data collection, only proper statistical treatment of evaluation data
+already sitting in `evaluation/results/`. The point was to convert
+already-known summary numbers (mean MAE deltas, correlation coefficients)
+into results that could actually support claims in the report, rather than
+being asserted from eyeballed CSVs.
+
+### What was done
+
+- Ran a Wilcoxon signed-rank test (n=40 paired graphs) on both probes:
+  - Shortcut probe (`constant_node_size` vs. `original`): vertex error
+    worsened significantly (median 1.0 → 11.0, p=3.6e-06). Edge error's mean
+    appeared to *improve*, but this was traced to two extreme-outlier
+    dense-large graphs — the median (3.5 → 20.0, 35/40 graphs worse) and the
+    Wilcoxon test itself (p=0.0003, significant in the worsening direction)
+    both confirmed the opposite of what the raw mean suggested.
+  - Layout probe (`alt_layout`/Kamada-Kawai vs. `original`): no significant
+    effect on either target (p=0.499 vertex, p=0.898 edge) — a clean null
+    result, again with a single outlier graph responsible for what would
+    otherwise look like a large mean improvement.
+- Validated the dense-bucket warning banner against all 1,676 held-out+test
+  predictions, binned by `num_nodes` to hold size roughly constant: found
+  the warning is backwards for vertex prediction (dense is consistently the
+  *safest* bucket) and directionally right but badly size-miscalibrated for
+  edge prediction (dense and sparse are tied at small sizes, diverging to a
+  3.3x gap by 75–100 nodes) — full-population confirmation of the
+  dense+large failure mode first seen in the Day 7 spot check.
+- Wrote `evaluation/compute_structural_pixel_features.py` to compute
+  per-graph `ink_fraction` (from the rendered images) and `diameter` /
+  `avg_clustering` (from the graphml) for all 1,676 graphs, since neither
+  existed as a saved per-graph artifact — only the aggregated
+  `ink_coverage_correlations.csv` summary had ever been exported.
+- Ran the pixel-only baseline (`ink_fraction → num_edges` linear regression):
+  explains 82% of edge-count variance on synthetic test data (r=0.905) but
+  is essentially uninformative on real held-out data (r=0.059) — ink
+  fraction barely varies across real MUTAG/PROTEINS graphs regardless of
+  true edge count.
+- Ran structural correlations: `avg_clustering` turned out highly collinear
+  with `density` (not independent information); `diameter` had a genuine
+  partial correlation with error after controlling for size, and its sign
+  flipped between synthetic and real data for vertex error.
+- Folded all four results into `FINAL_REPORT.md` Section 5.6 (new "Part 4"
+  subsection), extended Sections 5.2–5.4 with cross-references, added new
+  Limitations bullets, and added three new rows to the Appendix table index.
+
+### How
+
+Every mean-vs-median discrepancy found here was chased down to its specific
+cause (one or two outlier graphs) rather than reported as an unexplained
+anomaly — in each case the outlier was `syn_dense_large_0069`, the same
+graph already flagged as the worst Day 7 spot-check failure, which is a
+useful cross-validation that the various analyses are pointing at the same
+underlying failure mode rather than producing unrelated artifacts.
+
+### Why
+
+**Why insist on median/win-loss counts over the mean for the shortcut-probe
+edge-error comparison, given the mean was already sitting in
+`probe_summary.csv`?** Because the mean gives the *opposite* directional
+conclusion from what happens to 35 of 40 graphs — reporting it uncritically
+in the final report would have stated a false claim (that the shortcut
+probe improves edge accuracy) backed by a real p-value that actually proves
+the reverse. This is exactly the kind of error a "quick MAE delta" summary
+is prone to and a Wilcoxon test with median/win-loss reporting is not.
+
+**Why validate the warning banner against the full 1,676-graph population
+instead of trusting the Day 7 spot-check finding (n=5 dense graphs) as
+sufficient?** The spot check was real evidence but too small to state a
+confident claim from — this analysis is what turns "dense+large looked bad
+in our sample" into a statistically supported, size-binned claim with the
+population behind it, which is what actually belongs in a report versus in
+a progress note.
+
+**Why regenerate `ink_fraction`/`diameter`/`clustering` from scratch instead
+of treating the missing per-graph data as a dead end?** Both `image_path`
+and `graph_path` already existed in `failure_case_categories.csv` for every
+graph, meaning the missing per-graph values were one script away rather than
+requiring new data collection — recomputing them was strictly cheaper than
+leaving two of the plan's four "free" items undone.
+
+**Why does the real-vs-synthetic split in the pixel-baseline result matter
+so much?** It's the difference between "the CNN might just be counting
+ink" (a real threat to the whole research narrative) and "the CNN can't be
+just counting ink on real data, because ink barely correlates with edges
+there at all" (reassuring, and specific to *why* it's reassuring). Reporting
+only the aggregate r would have hidden this — the split is the finding.
+
+### Issues
+
+None blocking. The `bg_threshold=200` used for ink-fraction computation was
+a reasonable guess at the rendering's background/foreground convention, not
+verified against whatever threshold the original (never-exported)
+ink-coverage script used — worth a spot check if the r=0.824 figure already
+in `ink_coverage_correlations.csv` needs to be reconciled exactly against
+this round's numbers.
+
+### Next
+
+All four "free" Part 4 items are complete. Two decisions remain, independent
+of each other: (1) whether to pursue the "cheap" or "real effort" Part 4
+tiers (render-seed consistency, degenerate-graph tests, leave-one-generator-
+out retraining, etc.) — explicitly deferred until this point in the plan;
+(2) populating `FINAL_REPORT.md` Sections 1–4, 5.1, 5.5, 6, 7 (prose), and 8
+from `config.yaml`, the model/render scripts, and the still-unused
+evaluation figures — the actual write-up, not further analysis.
