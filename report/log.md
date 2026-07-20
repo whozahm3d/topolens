@@ -467,3 +467,53 @@ using all 1,676 held-out+test predictions in `failure_case_categories.csv`:**
 requires per-graph raw `ink_fraction` values, which don't exist in any
 currently exported CSV (`ink_coverage_correlations.csv` only has aggregated
 Pearson r). Needs the raw per-graph pass regenerated before this can be run.
+
+# 2026-07-20 — Part 4 (free items, completed): pixel-only baseline + structural correlations
+
+- Ran the two remaining "free" Part 4 items using
+  `evaluation/results/structural_pixel_features.csv` (per-graph ink fraction +
+  diameter + clustering coefficient, computed locally via
+  `compute_structural_pixel_features.py`). Full results in
+  `evaluation/results/topolens_pixel_structural_correlations.csv`.
+
+**Pixel-only baseline (`ink_fraction → num_edges`, simple linear regression):**
+
+- Test split (375 graphs, 100% synthetic): r=0.905, R²=0.819, linear-fit
+  MAE=83.73 vs. CNN's actual MAE=25.39. Ink coverage alone explains 82% of
+  edge-count variance on synthetic data — a substantial chunk of the CNN's
+  synthetic-data accuracy could in principle come from pixel counting alone,
+  though the CNN is still ~3.3x more accurate in absolute MAE terms.
+- Held-out split (1,301 graphs, 100% real MUTAG/PROTEINS): r=0.059,
+  R²=0.004, linear-fit MAE=47.25 vs. CNN's actual MAE=28.03. Ink coverage is
+  essentially uninformative on real graphs — `ink_fraction` barely varies
+  (0.092–0.192) despite true edge counts spanning 5–1,049. **This means the
+  CNN's real-world generalization cannot be explained by an ink-counting
+  shortcut, since that shortcut doesn't meaningfully exist in real-graph
+  renders.** Genuinely reassuring result for the core CNN-vs-GNN research
+  question.
+- Held-out breakdown by category is informative: `high_density_clutter`
+  alone shows r=0.947 (ink coverage does track edges for real dense
+  graphs specifically), while `in_distribution_normal` shows a slight
+  negative correlation (r=-0.206) and `out_of_distribution_size` shows
+  r=0.368. The aggregate near-zero correlation masks real heterogeneity
+  across these subgroups.
+
+**Structural correlations (diameter, clustering vs. error):**
+
+- Raw correlations are all significant (p<0.05, most p<0.0001 given large
+  n), but `avg_clustering` is highly collinear with `density` (r=0.836
+  test, 0.596 held-out) — it's mostly redescribing density, not adding
+  independent signal, and shouldn't be presented as a separate finding.
+- `diameter` is more independent of `num_nodes` (r=0.336 test, r=0.719
+  held-out) and its partial correlation with error, controlling for
+  `num_nodes`, is still meaningful: +0.478 (test, vertex error) and -0.287
+  (held-out, vertex error). **The sign flips between synthetic and real
+  data** — on synthetic graphs, a larger-than-expected diameter for a given
+  size predicts worse vertex accuracy; on real graphs, the opposite. Worth
+  reporting as an exploratory, non-obvious finding rather than a settled
+  mechanism — likely reflects a structural difference between synthetic
+  generators and real molecule/protein graph topology at matched size.
+
+- All 4 "free" Part 4 items are now complete (Wilcoxon significance test,
+  warning-banner validation, pixel-only baseline, structural correlations).
+  Decision on "cheap"/"real effort" tiers still pending.

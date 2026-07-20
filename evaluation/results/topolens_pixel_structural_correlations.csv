@@ -1,0 +1,36 @@
+analysis,split,subgroup,feature,target,statistic_type,value,n,p_value,notes
+pixel_only_baseline,test,all,ink_fraction,num_edges,pearson_r,0.9051,375,1.3702422538708621e-140,source=synthetic
+pixel_only_baseline,test,all,ink_fraction,num_edges,r_squared,0.8192,375,,
+pixel_only_baseline,test,all,ink_fraction,num_edges,linear_fit_mae,83.73,375,,
+pixel_only_baseline,test,all,ink_fraction,num_edges,cnn_actual_mae,25.39,375,,"comparison, not a pixel-baseline stat"
+pixel_only_baseline,held_out,all,ink_fraction,num_edges,pearson_r,0.0592,1301,0.0326999338406318,source=real (MUTAG/PROTEINS)
+pixel_only_baseline,held_out,all,ink_fraction,num_edges,r_squared,0.0035,1301,,
+pixel_only_baseline,held_out,all,ink_fraction,num_edges,linear_fit_mae,47.25,1301,,
+pixel_only_baseline,held_out,all,ink_fraction,num_edges,cnn_actual_mae,28.03,1301,,"comparison, not a pixel-baseline stat"
+pixel_only_baseline,held_out,in_distribution_normal,ink_fraction,num_edges,pearson_r,-0.2063,1090,6.138344554156272e-12,
+pixel_only_baseline,held_out,high_density_clutter,ink_fraction,num_edges,pearson_r,0.9466,144,1.1394604879775157e-71,
+pixel_only_baseline,held_out,out_of_distribution_size,ink_fraction,num_edges,pearson_r,0.3676,67,0.0022127658425762095,
+structural_correlation,test,all,num_nodes,abs_vertex_error,pearson_r,0.6613,375,1.68248700010369e-48,
+structural_correlation,test,all,num_nodes,abs_edge_error,pearson_r,0.4187,375,2.364142376790263e-17,
+structural_correlation,test,all,density,abs_vertex_error,pearson_r,-0.3616,375,5.049424745165143e-13,
+structural_correlation,test,all,density,abs_edge_error,pearson_r,0.2362,375,3.7543063698165863e-06,
+structural_correlation,test,all,diameter,abs_vertex_error,pearson_r,0.5599,375,2.502765058276628e-32,
+structural_correlation,test,all,diameter,abs_edge_error,pearson_r,-0.1289,375,0.012496023434768386,
+structural_correlation,test,all,avg_clustering,abs_vertex_error,pearson_r,-0.2675,375,1.4504474647595315e-07,
+structural_correlation,test,all,avg_clustering,abs_edge_error,pearson_r,0.2442,375,1.7087114771052185e-06,
+structural_correlation,held_out,all,num_nodes,abs_vertex_error,pearson_r,0.9398,1301,0.0,
+structural_correlation,held_out,all,num_nodes,abs_edge_error,pearson_r,0.9394,1301,0.0,
+structural_correlation,held_out,all,density,abs_vertex_error,pearson_r,-0.2729,1301,1.1914945214889503e-23,
+structural_correlation,held_out,all,density,abs_edge_error,pearson_r,-0.3277,1301,6.202218154942719e-34,
+structural_correlation,held_out,all,diameter,abs_vertex_error,pearson_r,0.6077,1301,3.6000646359444493e-132,
+structural_correlation,held_out,all,diameter,abs_edge_error,pearson_r,0.648,1301,8.038776450000515e-156,
+structural_correlation,held_out,all,avg_clustering,abs_vertex_error,pearson_r,-0.1425,1301,2.4754678078615233e-07,
+structural_correlation,held_out,all,avg_clustering,abs_edge_error,pearson_r,-0.1265,1301,4.762654409816109e-06,
+collinearity_check,test,all,diameter,num_nodes,pearson_r,0.3364,375,2.2494984435452182e-11,checks if diameter is just a size proxy
+collinearity_check,test,all,avg_clustering,density,pearson_r,0.8362,375,2.483185236748079e-99,checks if clustering is just a density proxy
+collinearity_check,held_out,all,diameter,num_nodes,pearson_r,0.719,1301,1.668648700417163e-207,checks if diameter is just a size proxy
+collinearity_check,held_out,all,avg_clustering,density,pearson_r,0.5963,1301,4.192420218397108e-126,checks if clustering is just a density proxy
+partial_correlation,test,controlling_for_num_nodes,diameter,abs_vertex_error,partial_pearson_r,0.4777,375,8.993095925816017e-23,
+partial_correlation,test,controlling_for_num_nodes,diameter,abs_edge_error,partial_pearson_r,-0.3154,375,4.154906391571435e-10,
+partial_correlation,held_out,controlling_for_num_nodes,diameter,abs_vertex_error,partial_pearson_r,-0.2867,1301,4.831454329997702e-26,
+partial_correlation,held_out,controlling_for_num_nodes,diameter,abs_edge_error,partial_pearson_r,-0.115,1301,3.231165307348328e-05,

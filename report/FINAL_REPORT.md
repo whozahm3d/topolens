@@ -85,38 +85,11 @@ constant node size is the primary quantitative evidence for or against
 node-size shortcut exploitation. See also `report/figures/probe_variant_mae_comparison.png`
 and `report/figures/probe_variant_examples_grid.png`._
 
-> **Note:** When discussing this section, you can add the following sentence
-to your report to bring in the statistical significance results from the
-additional notebook:
-
-**Statistical significance (Wilcoxon signed-rank, n=40 paired graphs).**
-Populated from `evaluation/results/topolens_part4_free_analyses_results.csv`.
-The vertex-error increase under `constant_node_size` is significant
-(median 1.0 → 11.0, p=3.6×10⁻⁶, 33/40 graphs worse), confirming the shortcut
-with a formal test rather than a summary MAE delta alone. The edge-error
-comparison requires care: mean edge error appears to _improve_
-(54.18 → 39.80), but this is an artifact of two extreme-outlier dense-large
-graphs; the median (3.5 → 20.0, 35/40 graphs worse) and the Wilcoxon test
-itself (p=0.0003, significant in the worsening direction) both confirm the
-shortcut also degrades edge prediction for the large majority of graphs.
-Report median and win/loss counts alongside — or instead of — the mean for
-this comparison.
-
 ### 5.3 Layout-Sensitivity Probe
 
 _Populate from `evaluation/results/probe_summary.csv` — compare `original` vs.
 `alt_layout` (Kamada-Kawai) variant rows, broken down by tier. Assess whether
 the model is overfit to `sfdp` layout topology._
-
-**Statistical significance (Wilcoxon signed-rank, n=40 paired graphs).** No
-significant layout effect was found on either vertex (p=0.499) or edge
-(p=0.898) error under the `alt_layout` (Kamada-Kawai) variant. Median deltas
-are 0 (vertex) and ~1.0 (edge), with near-even win/loss splits (17/16 and
-18/16). The −18.65 mean edge-error delta that a naive summary would report
-is driven almost entirely by a single outlier graph. **This is a clean null
-result: the model is not meaningfully overfit to the `sfdp` layout
-algorithm**, which should be stated plainly in Section 7 (Limitations) rather
-than assumed as a risk.
 
 ### 5.4 Ink-Coverage Correlational Analysis
 
@@ -125,6 +98,12 @@ Pearson r values for ink fraction vs. node/edge counts, and mean component
 area vs. predicted vertex count, across test and held-out splits. See also
 `report/figures/ink_coverage_vs_node_count.png` and
 `report/figures/component_size_vs_node_count.png`._
+
+**Pixel-only baseline (Section 5.6, Part 4, item 3).** A simple linear
+regression of `ink_fraction → num_edges` explains 82% of edge-count variance
+on synthetic test data (r=0.905) but is essentially uninformative on
+real-world held-out data (r=0.059) — see Section 5.6 for the full breakdown
+and its implication for the CNN's real-world generalization.
 
 ### 5.5 Failure-Case Taxonomy
 
@@ -187,33 +166,71 @@ multiple diagrams and prose text in one frame — rather than a breakdown of
 the property under normal single-graph input. The claim should be stated as
 qualified, not absolute, going forward.
 
-**Part 4 (free items) — warning-banner validation.** Using all 1,676
-held-out+test predictions in `failure_case_categories.csv`, binned by
-`num_nodes` to hold size roughly constant, the dense-bucket warning's
-validity depends entirely on which target it's warning about:
+**Part 4 (free items) — statistical and correlational follow-ups.** Four
+analyses requiring no new data collection, only further treatment of
+existing evaluation CSVs. Full numeric results in
+`evaluation/results/topolens_part4_free_analyses_results.csv` (items 1–2) and
+`evaluation/results/topolens_pixel_structural_correlations.csv` (items 3–4).
 
-- For **vertex count**, the warning is backwards — dense graphs have lower
-  error than sparse graphs at every size bin tested (e.g. 75–100 nodes:
-  dense median error 5.0 vs. sparse 21.0). Dense is the safest bucket for
-  vertex prediction, not a risk signal.
-- For **edge count**, the warning is directionally correct but
-  size-miscalibrated. Dense and sparse edge error are statistically tied at
-  small sizes, then diverge sharply with size, reaching a 3.3x gap by
-  75–100 nodes (dense median 224.0 vs. sparse median 67.5) — full-population
-  confirmation of the dense+large failure mode identified in the Part 1 spot
-  check (Section 5.6 above).
+_1. Wilcoxon signed-rank test on probe deltas (n=40, paired per graph)._ The
+shortcut probe's vertex-error increase under `constant_node_size` is
+significant (median 1.0 → 11.0, p=3.6×10⁻⁶, 33/40 graphs worse) — this
+upgrades the Section 5.2 finding from a summary MAE delta to a formal
+significance result. The edge-error comparison requires care: the _mean_
+appears to improve (54.18 → 39.80), but this is an artifact of two extreme
+outlier graphs (both dense+large, the same failure mode as the Part 1
+spot-check's worst case); the median (3.5 → 20.0, 35/40 graphs worse) and
+the Wilcoxon test itself (p=0.0003, significant in the _worsening_
+direction) both confirm the shortcut degrades edge prediction for the large
+majority of graphs — report median/win-loss counts, not the mean, for this
+comparison. Separately, no significant layout effect was found (Section 5.3)
+under `alt_layout`/Kamada-Kawai on either vertex (p=0.499) or edge (p=0.898)
+error — a clean null result contradicting what raw mean MAE alone would
+have suggested (again driven by a single outlier graph).
 
-- _The dense-bucket warning conflates two opposite risk profiles (Section
-  5.6, Part 4): safe for vertex prediction at all sizes, safe for edge
-  prediction only at small sizes, high-risk for edge prediction at large
-  sizes. Recommend a size-aware warning split rather than the current flat
-  MAE citation._
+_2. Warning-banner (dense-bucket) validation, holding size constant via
+bins, across all 1,676 held-out+test predictions._ The dense-bucket warning's
+validity depends entirely on which target it's warning about. For **vertex
+count**, the warning is backwards — dense graphs have lower error than
+sparse graphs at every size bin tested (e.g. 75–100 nodes: dense median
+error 5.0 vs. sparse 21.0); dense is the safest bucket for vertex
+prediction, not a risk signal. For **edge count**, the warning is
+directionally correct but size-miscalibrated: dense and sparse edge error
+are statistically tied at small sizes, then diverge sharply, reaching a
+3.3x gap by 75–100 nodes (dense median 224.0 vs. sparse median 67.5) — this
+is the full-population statistical confirmation of the Part 1 spot-check's
+"dense+large is catastrophic" finding. The current single "dense bucket"
+warning (flat MAE citation of 0.43/1.12) conflates two graphs with opposite
+risk profiles and should ideally be split into a size-aware version.
 
-The current single "dense bucket" warning (flat MAE citation of 0.43/1.12)
-therefore conflates two graphs with opposite risk profiles. A size-aware
-warning — distinguishing dense+small (reliable) from dense+large
-(high-risk) — would be both more accurate and more actionable; noted as a
-concrete recommendation in Section 7.
+_3. Pixel-only baseline: linear regression of `ink_fraction → num_edges`._
+On the test split (375 graphs, 100% synthetic), ink coverage alone explains
+82% of edge-count variance (r=0.905, R²=0.819), though the CNN is still
+~3.3x more accurate in absolute MAE (25.39 vs. 83.73 for the linear fit). On
+the held-out split (1,301 graphs, 100% real MUTAG/PROTEINS), ink coverage is
+essentially uninformative (r=0.059, R²=0.004) — `ink_fraction` barely varies
+(0.092–0.192) despite true edge counts spanning 5–1,049. **This means the
+CNN's real-world generalization cannot be explained by an ink-counting
+shortcut, since that shortcut does not meaningfully exist in real-graph
+renders** — a reassuring result for the Section 1 research question. Within
+held-out, the correlation is highly heterogeneous by category:
+`high_density_clutter` alone shows r=0.947, while `in_distribution_normal`
+shows a slight negative correlation (r=−0.206); the aggregate near-zero
+figure masks this.
+
+_4. Structural correlations beyond size/density: diameter and clustering
+coefficient vs. error._ `avg_clustering` is highly collinear with `density`
+(r=0.836 test, r=0.596 held-out) and mostly redescribes it rather than
+adding independent signal. `diameter` is more independent of `num_nodes`
+(r=0.336 test, r=0.719 held-out), and its partial correlation with error
+after controlling for `num_nodes` remains meaningful: +0.478 (test, vertex
+error) and −0.287 (held-out, vertex error). Notably, **the sign flips
+between synthetic and real data** — on synthetic graphs, a
+larger-than-expected diameter for a given size predicts _worse_ vertex
+accuracy; on real graphs, the opposite. Reported as an exploratory,
+non-obvious finding rather than a settled mechanism; likely reflects a
+structural difference between how the synthetic generators and real
+molecule/protein graphs produce diameter at matched size.
 
 ---
 
@@ -234,20 +251,32 @@ _Written by hand. Must cover:_
 - _Dataset size (2,500 synthetic graphs; no held-out synthetic graphs above 100 nodes)_
 - _Synthetic-to-real distribution gap (PROTEINS/MUTAG generalization)_
 - _Image resolution and node-size tradeoffs (224 × 224 px, node radius formula)_
-- _The empirically confirmed node-size shortcut (Section 5.2 probe finding)_
+- _The empirically confirmed node-size shortcut (Section 5.2 probe finding,
+  now statistically confirmed via Wilcoxon signed-rank test, Section 5.6
+  Part 4 — report median/win-loss counts for edge error, not the mean,
+  which is outlier-distorted)_
 - _The out-of-distribution size ceiling (n > 100; Section 5.5 MAE values)_
-- _Dense-bucket warning miscalibration for large dense graphs (Section 5.6:
-  dense-but-large graphs fail far worse than the cited dense-bucket MAE
-  suggests — the warning's historical accuracy figure is likely dominated by
-  small dense graphs)_
+- _The dense-bucket warning conflates two opposite risk profiles (Section
+  5.6, Part 4): safe (in fact the safest bucket) for vertex prediction at
+  every size tested, safe for edge prediction only at small sizes, and
+  high-risk for edge prediction at large sizes (3.3x worse than sparse by
+  75–100 nodes). Recommend a size-aware warning split rather than the
+  current flat MAE citation (0.43/1.12)._
 - _GCN baseline's out-of-distribution-size degradation (Section 5.6: on the
   live spot check, the GCN baseline degraded more than the CNN on
   OOD-size graphs, n=6 — small sample, worth naming as a limitation of the
   baseline comparison's generalizability rather than a settled result)_
 - _Combinatorial-plausibility claim is empirically qualified, not absolute
-  (Section 5.6: one exception found out of 30 live-app predictions, on an
-  input — multiple diagrams plus text in one frame — outside anything seen
-  in training)_
+  (Section 5.6, Part 3: one exception found out of 30 live-app predictions,
+  on an input — multiple diagrams plus text in one frame — outside anything
+  seen in training)_
+- _The pixel-only baseline result (Section 5.6, Part 4) should be read as
+  reassuring rather than as evidence of a shortcut: ink-coverage explains
+  most edge-count variance on synthetic data but almost none on real
+  held-out data, meaning the CNN's real-world accuracy is not attributable
+  to pixel-counting — however, synthetic-only evaluation may still overstate
+  how much the CNN has learned beyond low-level pixel statistics, and
+  synthetic results should be read with that caveat._
 
 ---
 
@@ -302,6 +331,9 @@ node-count input conditioning, and extension to directed or weighted graphs._
 | `gnn_training_log.csv` | Epoch-level GNN training log |
 | `topolens_spotcheck_results.csv` | Live-app spot check: 23 graphs, CNN/GCN/baseline predictions, warning-fired status (Section 5.6, Part 1) |
 | `topolens_novelimage_results.csv` | Live-app novel-image sanity check: 7 images, no ground truth, combinatorial-plausibility check (Section 5.6, Part 2) |
+| `topolens_part4_free_analyses_results.csv` | Wilcoxon signed-rank test results (shortcut + layout probes) and warning-banner validation by size bin (Section 5.6, Part 4, items 1–2) |
+| `structural_pixel_features.csv` | Per-graph ink fraction, diameter, and clustering coefficient merged onto `failure_case_categories.csv`, generated by `compute_structural_pixel_features.py` (source data for Part 4, items 3–4) |
+| `topolens_pixel_structural_correlations.csv` | Pixel-only baseline regression stats and structural (diameter/clustering) correlation + collinearity + partial-correlation results (Section 5.6, Part 4, items 3–4) |
 
 ### Application (`app/`)
 
