@@ -18,11 +18,21 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import config
 from topolens_utils import compute_density, density_bucket, ensure_dir
 
-# Add Anaconda Graphviz Library path on Windows to avoid .bat wrapping issues in pydot
+# Add Graphviz's Library\bin to PATH on Windows to avoid .bat wrapping issues in pydot.
+# Conda/Anaconda environments ship Graphviz binaries (sfdp, dot, ...) under
+# <env_prefix>\Library\bin. We resolve <env_prefix> from the *running* interpreter
+# (CONDA_PREFIX / sys.prefix) rather than a hardcoded machine-specific drive/path,
+# so this works on any machine regardless of username or install drive. Set the
+# TOPOLENS_GRAPHVIZ_BIN environment variable to point at a non-conda Graphviz install.
 if sys.platform == "win32":
-    graphviz_bin = r"E:\Anaconda\envs\py-dev\Library\bin"
-    if os.path.exists(graphviz_bin) and graphviz_bin not in os.environ["PATH"]:
-        os.environ["PATH"] = graphviz_bin + os.pathsep + os.environ["PATH"]
+    for graphviz_bin in (
+        os.environ.get("TOPOLENS_GRAPHVIZ_BIN", ""),
+        os.path.join(os.environ.get("CONDA_PREFIX", ""), "Library", "bin"),
+        os.path.join(sys.prefix, "Library", "bin"),
+    ):
+        if graphviz_bin and os.path.isdir(graphviz_bin) and graphviz_bin not in os.environ["PATH"]:
+            os.environ["PATH"] = graphviz_bin + os.pathsep + os.environ["PATH"]
+            break
 
 
 def seed_from_id(graph_id: str) -> int:
