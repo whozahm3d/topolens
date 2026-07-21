@@ -312,6 +312,27 @@ topolens/
 
 ---
 
+## 💡 Concluding Remarks, Acknowledgments & Future Directions
+
+### Research Takeaway
+**Topolens** demonstrates that while graph-native message passing architectures (GNNs) remain the theoretical benchmark for structured topology, deep convolutional vision models can extract latent geometric invariants purely from 2D visual layouts. When properly calibrated against visual shortcuts (such as node scaling radii and pixel ink density), 2D visual topology regression provides a practical, non-invasive alternative for counting and analyzing graph structures from legacy diagrams, UI wireframes, and scanned scientific publications where raw adjacency data is unavailable.
+
+### Future Research Directions
+- **Vision Transformers (ViT)**: Evaluating self-attention mechanisms (e.g., DINOv2 / ViT-B) to test patch-level scale invariance on complex graph renders.
+- **Multi-Layout Visual Ensembles**: Training vision backbones on multi-projection renders ($sfdp$ + $Kamada\text{-}Kawai$ + $Circo$) to eliminate layout-specific spatial bias.
+- **Joint Density-Scale Calibration**: Learning continuous joint embeddings of node size and clutter density to extend reliable counting beyond $|V| > 100$.
+
+### Acknowledgments & Project Context
+Developed as an intensive 1-week empirical research investigation into visual graph learning. 
+
+Special thanks to the open-source maintainers of:
+- **PyTorch & PyTorch Geometric** for neural network and graph learning primitives.
+- **NetworkX & Graphviz** for graph generation and $sfdp$ layout algorithms.
+- **Streamlit** for interactive model visualization and web application prototyping.
+- **TU Dortmund Benchmark Collection** for the MUTAG and PROTEINS real-world datasets.
+
+---
+
 ## 📜 License & Citation
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
@@ -327,3 +348,4 @@ If you use **Topolens** in your research or project, please cite:
   url = {https://github.com/whozahm3d/topolens}
 }
 ```
+
