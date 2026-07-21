@@ -982,7 +982,7 @@ def render_home_section(lim_data: dict) -> None:
                     <strong>Home</strong> &mdash; Project introduction, composition stats, and footer.<br>
                     <strong>Predict</strong> &mdash; Perform dynamic visual topology regression on graph files/renders.<br>
                     <strong>Results</strong> &mdash; Metrics comparison dashboard, breakdowns, and error scatters.<br>
-                    <strong>Research Insights</strong> &mdash; Advanced performance and shortcut checks (coming soon).<br>
+                    <strong>Research Insights</strong> &mdash; Grad-CAM attention, shortcut-learning probe, layout sensitivity, and failure-case analysis.<br>
                     <strong>Models</strong> &mdash; Live parameter inspection, architectures, and loss logs.
                 </p>
             </div>
