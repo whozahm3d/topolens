@@ -42,8 +42,8 @@ Graph Neural Networks (GNNs) operate natively on graph adjacency matrices and no
 
 Evaluated on **1,676 test and held-out graphs** across synthetic generators and real-world biological benchmark datasets (MUTAG & PROTEINS):
 
-| Model | Split | Vertex MAE ($|V|$) | Vertex Median | Edge MAE ($|E|$) | Edge Median | Key Characteristics |
-|---|---|---|---|---|---|---|
+| Model | Split | Vertex MAE (N) | Vertex Median | Edge MAE (E) | Edge Median | Key Characteristics |
+| --- | --- | --- | --- | --- | --- | --- |
 | **Custom CNN** | Synthetic Test | **3.20** | **1.0** | **25.39** | **4.0** | Highly accurate in-distribution |
 | **GCN Baseline** | Synthetic Test | 19.05 | 14.0 | 76.21 | 42.0 | Degree-normalized mean pooling |
 | **Heuristic** | Synthetic Test | 0.00* | 0.0 | 342.10 | 128.0 | *Trivial node lookup; edge formula fails on scale |
@@ -57,15 +57,15 @@ Evaluated on **1,676 test and held-out graphs** across synthetic generators and 
 
 Controlled intervention probes ($N=40$ paired graphs) isolate *what* visual features the CNN relies upon:
 
-| Tier / Group | Variant | Vertex MAE | Edge MAE | Sample Size ($N$) | Primary Insight |
-|---|---|---|---|---|---|
-| **Overall** | `original` | **3.43** | **54.18** | 40 | Baseline canonical render ($sfdp$) |
+| Tier / Group | Variant | Vertex MAE | Edge MAE | Sample Size (N) | Primary Insight |
+| --- | --- | --- | --- | --- | --- |
+| **Overall** | `original` | **3.43** | **54.18** | 40 | Baseline canonical render (sfdp) |
 | **Overall** | `constant_node_size` | **10.48** | **39.80** | 40 | **Vertex MAE triples** ($p = 3.6 \times 10^{-6}$), confirming dot coverage cue |
 | **Overall** | `alt_layout` | **3.08** | **35.53** | 40 | No significant layout sensitivity ($p = 0.499$) |
 | Large Tier | `original` | 8.90 | 195.50 | 10 | $50 \le N \le 100$ baseline |
 | Large Tier | `constant_node_size` | 16.70 | 82.80 | 10 | Vertex error doubles on large graphs |
 | Large Tier | `alt_layout` | 7.10 | 122.40 | 10 | Kamada-Kawai layout handles dense clusters well |
-| Medium Tier| `constant_node_size` | 15.30 | 51.70 | 10 | $25 \le N \le 50$ (Vertex MAE: $3.50 \to 15.30$) |
+| Medium Tier | `constant_node_size` | 15.30 | 51.70 | 10 | $25 \le N \le 50$ (Vertex MAE: $3.50 \to 15.30$) |
 | Small Tier | `constant_node_size` | 8.50 | 21.20 | 10 | $10 \le N \le 25$ (Vertex MAE: $1.00 \to 8.50$) |
 
 <div align="center">
@@ -81,8 +81,8 @@ Controlled intervention probes ($N=40$ paired graphs) isolate *what* visual feat
 
 Categorization of model errors into domain-specific failure modes:
 
-| Split | Failure Category | Mean Vertex MAE | Median Vertex MAE | Mean Edge MAE | Median Edge MAE | $N$ |
-|---|---|---|---|---|---|---|
+| Split | Failure Category | Mean Vertex MAE | Median Vertex MAE | Mean Edge MAE | Median Edge MAE | N |
+| --- | --- | --- | --- | --- | --- | --- |
 | Held-Out | `high_density_clutter` | **0.43** | **0.0** | **1.13** | **1.0** | 144 |
 | Held-Out | `in_distribution_normal` | **6.67** | **3.0** | **20.79** | **10.0** | 1090 |
 | Held-Out | `out_of_distribution_size` | **96.64** | **71.0** | **203.60** | **155.0** | 67 |
@@ -102,8 +102,8 @@ Categorization of model errors into domain-specific failure modes:
 
 Pearson correlation coefficients ($r$) analyzing pixel coverage vs. topological invariants:
 
-| Split | Metric X | Metric Y | Pearson $r$ | $p$-value | Interpretation |
-|---|---|---|---|---|---|
+| Split | Metric X | Metric Y | Pearson r | p-value | Interpretation |
+| --- | --- | --- | --- | --- | --- |
 | Test | `ink_fraction` | `num_edges` | **+0.824** | $7.48 \times 10^{-94}$ | Ink fraction strongly tracks edge count in synthetic data |
 | Test | `ink_fraction` | `pred_num_edges` | **+0.845** | $1.49 \times 10^{-103}$ | CNN edge output highly aligned with ink coverage |
 | Test | `mean_component_area` | `pred_num_vertices` | **+0.627** | $2.10 \times 10^{-42}$ | Connected component size correlates with vertex predictions |
@@ -120,6 +120,15 @@ Pearson correlation coefficients ($r$) analyzing pixel coverage vs. topological 
 *Figure 3: Grad-CAM spatial activation maps generated at layer `features[3]` comparing Vertex target attention vs. Edge target attention across generator families.*
 
 </div>
+
+---
+
+## ⚠️ Model Limitations
+
+- **Out-of-distribution size ceiling ($n > 100$)**: The training set contains no graphs above 100 nodes. On the held-out real-world split ($n = 67$ graphs exceeding this ceiling), held-out vertex MAE is **96.64** and edge MAE is **203.6**, compared with vertex MAE **6.67** / edge MAE **20.79** for the 1,090 in-distribution graphs in the same split. Do not use predictions on large graphs without awareness of this gap.
+- **Node-size shortcut confound**: The renderer scales node radius as $\max(15, 4000/n)$, so larger nodes signal fewer vertices. A shortcut probe (constant node size) raises vertex MAE from **3.42** to **10.47** overall — strong evidence the model exploits visual node size rather than topology alone to count vertices.
+- **Synthetic training distribution**: The model was trained entirely on NetworkX-generated graphs (Erdős–Rényi, Barabási–Albert, Watts–Strogatz, random trees, dense). Graphs with markedly different visual structure — hierarchical, planar, or domain-specific layouts — may fall outside the learned distribution.
+- **Single layout algorithm**: All training images use Graphviz `sfdp` (spring-electrical). An alternative-layout probe (Kamada-Kawai) shows minimal vertex MAE change but measurable edge MAE variance, indicating partial layout sensitivity for edge estimation.
 
 ---
 
