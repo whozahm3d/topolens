@@ -36,28 +36,90 @@ Graph Neural Networks (GNNs) operate natively on graph adjacency matrices and no
 
 ---
 
-## 📊 Key Experimental Findings
+## 📊 Key Experimental Findings & CSV Results
 
-### 1. In-Distribution vs. Held-Out Generalization (MAE)
+### 1. In-Distribution vs. Held-Out Generalization (`summary_comparison.csv`)
 
 Evaluated on **1,676 test and held-out graphs** across synthetic generators and real-world biological benchmark datasets (MUTAG & PROTEINS):
 
-| Model | Split | Vertex MAE ($|V|$) | Edge MAE ($|E|$) | Key Characteristics |
-|---|---|---|---|---|
-| **Custom CNN** | Synthetic Test | **3.20** | **25.39** | Highly accurate in-distribution |
-| **GCN Baseline** | Synthetic Test | 19.05 | 76.21 | Degree-normalized mean pooling |
-| **Heuristic** | Synthetic Test | 0.00* | 342.10 | *Trivial node lookup; edge formula fails on scale |
-| **Custom CNN** | Held-Out (Real) | **10.62** | **28.03** | Robust on small-to-medium real graphs |
-| **GCN Baseline** | Held-Out (Real) | 21.15 | 32.50 | Stable mean-pooling embedding |
-| **Heuristic** | Held-Out (Real) | 0.00* | 4927.70 | Catastrophic failure on large graphs |
+| Model | Split | Vertex MAE ($|V|$) | Vertex Median | Edge MAE ($|E|$) | Edge Median | Key Characteristics |
+|---|---|---|---|---|---|---|
+| **Custom CNN** | Synthetic Test | **3.20** | **1.0** | **25.39** | **4.0** | Highly accurate in-distribution |
+| **GCN Baseline** | Synthetic Test | 19.05 | 14.0 | 76.21 | 42.0 | Degree-normalized mean pooling |
+| **Heuristic** | Synthetic Test | 0.00* | 0.0 | 342.10 | 128.0 | *Trivial node lookup; edge formula fails on scale |
+| **Custom CNN** | Held-Out (Real) | **10.62** | **3.0** | **28.03** | **10.0** | Robust on small-to-medium real graphs |
+| **GCN Baseline** | Held-Out (Real) | 21.15 | 16.0 | 32.50 | 18.0 | Stable mean-pooling embedding |
+| **Heuristic** | Held-Out (Real) | 0.00* | 0.0 | 4927.70 | 2841.0 | Catastrophic failure on large graphs |
 
-### 2. Shortcut-Learning & Probe Interventions
+---
 
-Controlled intervention probes isolate *what* visual features the CNN relies upon:
+### 2. Shortcut-Learning & Probe Interventions (`probe_summary.csv`)
 
-* **Constant Node Size Probe**: When node circle radii are locked to a constant size (removing the $r = \max(15, 4000/N)$ scaling cue), CNN Vertex MAE increases significantly ($3.43 \to 10.48, p = 3.6 \times 10^{-6}$ via Wilcoxon signed-rank test), confirming apparent dot coverage acts as a primary counting proxy.
-* **Layout Sensitivity Probe**: Switching rendering layout from Graphviz `sfdp` to `Kamada-Kawai` produced no statistically significant change in vertex error ($p = 0.499$) or edge error ($p = 0.898$), ruling out layout-specific spatial overfitting.
-* **Pixel-Only Ink Coverage Baseline**: Simple linear regression of ink fraction $\to |E|$ explains **82% of edge variance** on synthetic renders ($r = 0.905$), but collapses on real molecule/protein graphs ($r = 0.059$). This confirms the CNN's real-world performance relies on visual structural features rather than trivial ink counting.
+Controlled intervention probes ($N=40$ paired graphs) isolate *what* visual features the CNN relies upon:
+
+| Tier / Group | Variant | Vertex MAE | Edge MAE | Sample Size ($N$) | Primary Insight |
+|---|---|---|---|---|---|
+| **Overall** | `original` | **3.43** | **54.18** | 40 | Baseline canonical render ($sfdp$) |
+| **Overall** | `constant_node_size` | **10.48** | **39.80** | 40 | **Vertex MAE triples** ($p = 3.6 \times 10^{-6}$), confirming dot coverage cue |
+| **Overall** | `alt_layout` | **3.08** | **35.53** | 40 | No significant layout sensitivity ($p = 0.499$) |
+| Large Tier | `original` | 8.90 | 195.50 | 10 | $50 \le N \le 100$ baseline |
+| Large Tier | `constant_node_size` | 16.70 | 82.80 | 10 | Vertex error doubles on large graphs |
+| Large Tier | `alt_layout` | 7.10 | 122.40 | 10 | Kamada-Kawai layout handles dense clusters well |
+| Medium Tier| `constant_node_size` | 15.30 | 51.70 | 10 | $25 \le N \le 50$ (Vertex MAE: $3.50 \to 15.30$) |
+| Small Tier | `constant_node_size` | 8.50 | 21.20 | 10 | $10 \le N \le 25$ (Vertex MAE: $1.00 \to 8.50$) |
+
+<div align="center">
+
+![Probe Variant MAE Comparison](report/figures/probe_variant_mae_comparison.png)  
+*Figure 1: Mean Absolute Error (MAE) across original, constant node size, and alternative layout probes.*
+
+</div>
+
+---
+
+### 3. Failure Taxonomy Breakdown (`failure_case_summary.csv`)
+
+Categorization of model errors into domain-specific failure modes:
+
+| Split | Failure Category | Mean Vertex MAE | Median Vertex MAE | Mean Edge MAE | Median Edge MAE | $N$ |
+|---|---|---|---|---|---|---|
+| Held-Out | `high_density_clutter` | **0.43** | **0.0** | **1.13** | **1.0** | 144 |
+| Held-Out | `in_distribution_normal` | **6.67** | **3.0** | **20.79** | **10.0** | 1090 |
+| Held-Out | `out_of_distribution_size` | **96.64** | **71.0** | **203.60** | **155.0** | 67 |
+| Test | `high_density_clutter` | **1.27** | **1.0** | **51.82** | **4.0** | 110 |
+| Test | `in_distribution_normal` | **4.00** | **2.0** | **14.42** | **3.0** | 265 |
+
+<div align="center">
+
+![Worst Case Image Grid](report/figures/worst_case_image_grid.png)  
+*Figure 2: Top 15 worst-case prediction errors with true vs. predicted vertex/edge counts and category labels.*
+
+</div>
+
+---
+
+### 4. Pixel Coverage & Structural Correlations (`ink_coverage_correlations.csv`)
+
+Pearson correlation coefficients ($r$) analyzing pixel coverage vs. topological invariants:
+
+| Split | Metric X | Metric Y | Pearson $r$ | $p$-value | Interpretation |
+|---|---|---|---|---|---|
+| Test | `ink_fraction` | `num_edges` | **+0.824** | $7.48 \times 10^{-94}$ | Ink fraction strongly tracks edge count in synthetic data |
+| Test | `ink_fraction` | `pred_num_edges` | **+0.845** | $1.49 \times 10^{-103}$ | CNN edge output highly aligned with ink coverage |
+| Test | `mean_component_area` | `pred_num_vertices` | **+0.627** | $2.10 \times 10^{-42}$ | Connected component size correlates with vertex predictions |
+| Held-Out | `ink_fraction` | `pred_num_edges` | **+0.465** | $6.58 \times 10^{-71}$ | Ink shortcut degrades significantly on real biological graphs |
+| Held-Out | `ink_fraction` | `num_edges` | **+0.093** | $0.00078$ | Real graphs violate simple pixel-coverage counting assumptions |
+
+---
+
+### 5. Grad-CAM Spatial Interpretability
+
+<div align="center">
+
+![Grad-CAM Attention Grid](report/figures/gradcam_grid_by_generator.png)  
+*Figure 3: Grad-CAM spatial activation maps generated at layer `features[3]` comparing Vertex target attention vs. Edge target attention across generator families.*
+
+</div>
 
 ---
 
