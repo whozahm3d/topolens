@@ -278,11 +278,48 @@ of specific cases.
 
 ### 5.2 Shortcut-Learning Probe (Node-Size Confound)
 
-*Populate from `evaluation/results/probe_summary.csv` — compare `original` vs.
-`constant_node_size` variant rows. The overall vertex MAE change under
-constant node size is the primary quantitative evidence for or against
-node-size shortcut exploitation. See also `report/figures/probe_variant_mae_comparison.png`
-and `report/figures/probe_variant_examples_grid.png`.*
+The renderer scales node radius as `max(15, 4000/n)` (Section 2.2), flagged
+at design time as a possible shortcut: a model could infer vertex count from
+node *size* rather than from counting distinct nodes. To test this directly,
+the same 40 probe graphs (10 per tier) were re-rendered with node radius
+fixed at a **constant** value regardless of `n`, holding topology, layout
+algorithm, edge style, and image resolution identical to the canonical
+render — isolating node-size as the only variable that changes.
+
+| Tier | Original vertex MAE | Constant-node-size vertex MAE | Original edge MAE | Constant-node-size edge MAE |
+|---|---|---|---|---|
+| tiny | 0.3 | 1.4 | 1.6 | 3.5 |
+| small | 1.0 | 8.5 | 3.3 | 21.2 |
+| medium | 3.5 | 15.3 | 16.3 | 51.7 |
+| large | 8.9 | 16.7 | 195.5 | 82.8 |
+| **overall (n=40)** | **3.425** | **10.475** | **54.175** | **39.8** |
+
+Overall vertex MAE roughly triples under constant node size (3.43 → 10.48),
+the single largest effect size of any probe in this report, and the effect
+holds in every tier without exception. Its *relative* magnitude, however, is
+not driven by absolute graph size the way the OOD-size failure mode is
+(Section 5.5): the small tier shows the largest multiplicative jump (1.0 →
+8.5, 8.5×) while the large tier shows the smallest (8.9 → 16.7, 1.9×) despite
+having the largest absolute error under both conditions. This is consistent
+with node size being a comparatively strong, easily-exploited cue in
+low-to-mid-range graphs, where individual node blobs are still visually
+distinguishable, and a comparatively weaker one in large/dense graphs, where
+node blobs already overlap and the model likely leans on other pixel-level
+cues such as ink coverage (Section 5.4) instead.
+
+Overall edge MAE appears to *decrease* under constant node size (54.18 →
+39.80), which read in isolation would suggest the shortcut actively helps
+edge estimation. Section 5.6 (Part 4, item 1) shows this reading is an
+artifact: two dense/large outlier graphs dominate the mean, while the median
+(3.5 → 20.0 with node size held constant) and a Wilcoxon signed-rank test
+(p ≈ 0.0003) both confirm edge accuracy degrades for the large majority of
+probe graphs (35 of 40) under the same intervention — the same statistical
+correction applied to the vertex-MAE tripling (Wilcoxon p ≈ 3.6×10⁻⁶).
+Taken together, this probe is the single strongest piece of evidence in the
+report that part of the CNN's headline accuracy (Section 3) comes from a
+rendering convention rather than pure topological inference. It is the
+finding that most directly qualifies the Section 3 result and motivates
+both the Discussion (Section 6) and the Limitations (Section 7).
 
 ### 5.3 Layout-Sensitivity Probe
 
@@ -326,26 +363,127 @@ does not appear contingent on `sfdp` specifically.
 
 ### 5.4 Ink-Coverage Correlational Analysis
 
-*Populate from `evaluation/results/ink_coverage_correlations.csv`. Report
-Pearson r values for ink fraction vs. node/edge counts, and mean component
-area vs. predicted vertex count, across test and held-out splits. See also
-`report/figures/ink_coverage_vs_node_count.png` and
-`report/figures/component_size_vs_node_count.png`.*
+Two low-level pixel statistics — `ink_fraction` (share of non-background
+pixels) and `mean_component_area` (average size of connected dark-pixel
+blobs) — were correlated against true and predicted counts, to test whether
+the CNN's outputs track these simple image statistics rather than genuine
+structural features.
 
-**Pixel-only baseline (Section 5.6, Part 4, item 3).** A simple linear
+| Pair | Test (synthetic) r | Held-out (real) r |
+|---|---|---|
+| ink_fraction vs. num_nodes | 0.538 | 0.070 |
+| ink_fraction vs. num_edges | 0.824 | 0.093 |
+| ink_fraction vs. pred_num_vertices | 0.618 | 0.172 |
+| ink_fraction vs. pred_num_edges | 0.845 | 0.465 |
+| mean_component_area vs. num_nodes | 0.552 | −0.083 |
+| mean_component_area vs. pred_num_vertices | 0.627 | 0.001 |
+| num_components vs. num_nodes | −0.240 | 0.308 |
+
+(All test-split correlations n=375, p<10⁻²⁸; held-out n=1301, p-values range
+from <10⁻⁶⁹ down to 0.97 for the near-zero rows — see
+`evaluation/results/ink_coverage_correlations.csv` for exact values.)
+
+On the synthetic test split, both statistics behave as expected of a
+shortcut: `ink_fraction` correlates almost identically with true edge count
+(r=0.824) and the CNN's *predicted* edge count (r=0.845), and
+`mean_component_area` correlates about as strongly with predicted vertex
+count (r=0.627) as with true vertex count (r=0.552). The CNN's synthetic-data
+outputs track these pixel statistics about as well as they track the ground
+truth. `num_components` shows a modest negative correlation with node count
+(r=−0.240) — larger synthetic graphs tend to have *fewer* separate
+components, consistent with how the generator families are constructed
+(Barabási–Albert graphs are connected by construction; Erdős–Rényi graphs at
+these tiers sit above the giant-component threshold).
+
+On the held-out (real) split, these relationships largely collapse.
+`ink_fraction` vs. true edge count falls to r=0.093 — essentially no
+relationship — while `ink_fraction` vs. *predicted* edge count remains
+moderate at r=0.465. That gap (0.093 true vs. 0.465 predicted) is itself
+informative: the CNN's real-data predictions still partially echo the
+pixel-coverage cue even where that cue no longer tracks the actual target,
+which is independent evidence (alongside the pixel-only baseline below) that
+some of the model's real-world error traces back to a synthetic-data
+shortcut that doesn't transfer. `mean_component_area` vs. predicted vertex
+count drops to essentially zero (r=0.001), and `num_components` vs. node
+count *flips sign* entirely (test r=−0.240 → held-out r=+0.308) — MUTAG's
+small, dense molecular graphs and PROTEINS' larger, sparser contact maps
+simply do not follow the synthetic generators' size-vs-connectivity pattern,
+confirming the synthetic and real distributions differ structurally and not
+only in scale.
+
+**Pixel-only baseline (Section 5.6, Part 4, item 3).** A directly-fit linear
 regression of `ink_fraction → num_edges` explains 82% of edge-count variance
-on synthetic test data (r=0.905) but is essentially uninformative on
-real-world held-out data (r=0.059) — see Section 5.6 for the full breakdown
-and its implication for the CNN's real-world generalization.
+on synthetic test data (r=0.905, R²=0.819) but is essentially uninformative
+on real-world held-out data (r=0.059, R²=0.004) — the same qualitative
+pattern as the raw correlations above, and the clearer piece of evidence that
+the CNN's real-world accuracy is not simple pixel-counting (see Section 5.6
+for the full breakdown). Note that this regression's r (0.905) and this
+section's raw Pearson r for the same nominal pair (0.824) do not match
+exactly: the two are computed by different scripts using different
+background thresholds (`image_statistics.py` uses `white_threshold=250`;
+`compute_structural_pixel_features.py` uses `bg_threshold=200`), a
+discrepancy identified but never reconciled to one canonical `ink_fraction`
+definition (see `progress_log.md`, 20 Jul entry, and Section 7). Both figures
+support the same conclusion at different resolutions of the same measurement
+convention, but the exact magnitude should not be treated as more precise
+than that.
 
 ### 5.5 Failure-Case Taxonomy
 
-*Populate from `evaluation/results/failure_case_summary.csv` and
-`evaluation/results/failure_case_categories.csv`. The contrast between
-`out_of_distribution_size` (n > 100 training ceiling) and `in_distribution_normal`
-on the held-out split is the headline finding for this section. See also
-`report/figures/error_vs_num_nodes.png`, `report/figures/error_vs_density.png`,
-and `report/figures/worst_case_image_grid.png`.*
+Every test and held-out graph was assigned to exactly one of three
+categories, checked in priority order: **out_of_distribution_size** (node
+count exceeds the training set's empirical maximum, derived from
+`data/splits/train.csv` rather than hard-coded — 100 nodes in practice) takes
+precedence over density; among in-training-size graphs,
+**high_density_clutter** (`density ≥ 0.40`, the same `dense` bucket used in
+Section 4) is separated from **in_distribution_normal** (density below 0.40,
+covering both the `sparse` and `medium` buckets).
+
+| Split | Category | Mean vertex MAE | Median vertex MAE | Mean edge MAE | Median edge MAE | n |
+|---|---|---|---|---|---|---|
+| held_out | high_density_clutter | 0.43 | 0.0 | 1.13 | 1.0 | 144 |
+| held_out | in_distribution_normal | 6.67 | 3.0 | 20.79 | 10.0 | 1,090 |
+| held_out | out_of_distribution_size | 96.64 | 71.0 | 203.60 | 155.0 | 67 |
+| test | high_density_clutter | 1.27 | 1.0 | 51.82 | 4.0 | 110 |
+| test | in_distribution_normal | 4.00 | 2.0 | 14.42 | 3.0 | 265 |
+
+(The synthetic test set is capped at 100 nodes by construction, so no
+`out_of_distribution_size` graphs exist in that split — the category is only
+populated by held-out real-world graphs, where MUTAG/PROTEINS include an
+"xlarge" tier up to 620 nodes.)
+
+On the held-out split, the ranking is unambiguous: `out_of_distribution_size`
+is both the smallest category by count (67 of 1,301 graphs, ~5%) and by a
+wide margin the worst by error — mean vertex MAE 96.64 and edge MAE 203.60,
+roughly 14× and 10× `in_distribution_normal`'s 6.67 and 20.79 respectively.
+`high_density_clutter` is not merely tolerable but the single *best*-performing
+category (mean vertex MAE 0.43, edge MAE 1.13) — confirming, at full-population
+scale, the counter-intuitive density-bucket finding from Section 4: dense,
+visually cluttered graphs are not a failure mode for this model, they are its
+strongest regime.
+
+On the test split, the same ordering largely holds: `high_density_clutter`
+again outperforms `in_distribution_normal` on vertex count (1.27 vs. 4.00),
+though this reverses for edge count (51.82 vs. 14.42) — consistent with
+Section 4's generator-level finding that dense graphs are harder specifically
+for edge counting, given their much larger absolute edge counts, even while
+remaining easy for vertex counting. The test-split `high_density_clutter` row
+also shows a large mean/median gap for edge MAE (mean 51.82 vs. median 4.0,
+n=110) — the same kind of outlier-driven mean distortion flagged throughout
+Section 5.6, plausibly involving the same dense/large outlier graph
+(`syn_dense_large_0069`) already identified in Sections 5.3 and 5.6. The
+median is the more representative summary of this category's typical
+performance.
+
+Taken together, these results reorder the failure modes anticipated at
+design time: Section 2.2 flagged visual clutter and node overlap as the
+primary expected risk, but the taxonomy shows **size generalization, not
+density, is the dominant and by far most severe failure mode**. A graph need
+only exceed the size the model was trained on to fail badly; it does not
+need to be visually cluttered to fail, and being visually cluttered does not,
+on its own, predict failure. This finding directly motivates the Section 6
+discussion and the Section 8 future-work item on extending the training size
+ceiling.
 
 ### 5.6 Live-App Validation: Spot Check & Novel-Image Sanity Check
 
@@ -614,6 +752,17 @@ synthetic data where the shortcut is strong; synthetic-only evaluation may
 still overstate how much the CNN has learned beyond low-level pixel
 statistics, and results on synthetic data specifically should be read with
 that caveat in mind.
+
+**Ink-fraction measurement inconsistency.** Two different scripts compute
+`ink_fraction` with two different background thresholds —
+`evaluation/image_statistics.py` (`white_threshold=250`, used for Section
+5.4's correlation table) and `evaluation/compute_structural_pixel_features.py`
+(`bg_threshold=200`, used for the Section 5.6 pixel-only-baseline regression)
+— and were never reconciled to one canonical definition. Both give the same
+qualitative conclusion (ink coverage is a strong edge-count proxy on
+synthetic data, a weak one on real data), but the exact correlation
+magnitudes reported in Sections 5.4 and 5.6 are not directly comparable to
+each other and should not be cited interchangeably.
 
 **Training reproducibility.** Two otherwise-identical full training runs
 (differing only in random GPU/cuDNN non-determinism on Colab) produced test
