@@ -17,16 +17,18 @@ Pillow>=9.0
 
 pydot
 
-# Pinned to the exact versions this project was developed and evaluated on,
-# not just a floor — GPU/CUDA and torch-geometric APIs vary meaningfully
-# across minor versions, and results in this report (checkpoints, metrics)
-# were produced with these exact builds. Training ran on Colab (T4 GPU);
-# checkpoints are CUDA tensors and must be loaded with map_location="cpu"
-# on this CPU-only dev machine (already handled everywhere in the codebase).
+# Pinned to the exact versions this project was developed and evaluated on.
+# Training runs on Google Colab (T4 GPU, CUDA). All training scripts auto-detect
+# CUDA via `torch.device("cuda" if torch.cuda.is_available() else "cpu")`,
+# so they run on CPU locally and on GPU in Colab with no code change.
+# Checkpoints saved on Colab are CUDA tensors — all torch.load() calls in the
+# codebase already pass map_location="cpu" for safe local loading.
+# GPU/CUDA and torch-geometric APIs vary across minor versions; results in this
+# report (checkpoints, metrics) were produced with these exact builds.
 
-torch==2.13.0
-torchvision>=0.15
-torch-geometric==2.8.0
+torch==2.5.1
+torchvision>=0.20
+torch-geometric==2.6.0
 
 scikit-learn>=1.2
 jupyter>=1.0
