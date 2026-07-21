@@ -262,8 +262,11 @@ def main():
             
             # Log render choice (stdout warning level, can see fallback behavior)
             if render_result["layout_algorithm"] == "networkx_spring":
-                # Only log spring layouts since they represent a fallback
-                pass
+                print(
+                    f"[WARN] {graph_id}: Graphviz sfdp unavailable — "
+                    f"fell back to networkx_spring layout. "
+                    f"Install Graphviz + pydot (or pygraphviz) for canonical renders."
+                )
                 
             # Store full record matching the schema
             metadata_list.append({
