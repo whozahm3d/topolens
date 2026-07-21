@@ -240,10 +240,41 @@ error grows with node count far more sharply than with density.
 
 ### 5.1 Grad-CAM: What Does the Model Look At?
 
-*Populate from `report/figures/gradcam_grid_by_generator.png` and
-`report/figures/gradcam_grid_failure_cases.png`. Describe spatial attention
-patterns across generator types and failure cases. Individual CAM overlays
-are in `report/figures/gradcam/`.*
+Grad-CAM is computed at `features[3]`, the CNN's final (256-channel)
+convolutional block, with two independent backward passes per image — one
+targeting the vertex-count output, one targeting the edge-count output
+(`models/gradcam.py`). Because this layer sits after four 2×2 max-pool
+stages, the resulting heatmap has a native resolution of only 14×14 for a
+224×224 input; overlays should be read as coarse regions of interest, not
+precise per-node attribution.
+
+**By generator type** (`gradcam_grid_by_generator.png`). Activation is
+consistently concentrated on node clusters rather than empty background
+across all five generator families — the model is not attending to
+irrelevant image regions. The spatial *spread* of activation tracks visual
+density rather than topology type directly: sparse, tree-like graphs
+(`random_tree`, low-`p` `erdos_renyi`) show activation tightly localized
+around a small number of node hubs, while `dense` and `watts_strogatz`
+graphs show activation spread broadly across the whole node-cluster region.
+Vertex-target and edge-target maps overlap substantially but are not
+identical: the vertex-target map is more tightly localized on individual
+node blobs, while the edge-target map is more diffuse, extending into the
+inter-node space where edges are drawn — consistent with edge count
+requiring information about the connective tissue between nodes rather than
+node identity alone.
+
+**Failure cases** (`gradcam_grid_failure_cases.png`). For the worst-error
+graphs, activation frequently concentrates on a single densely-packed
+sub-region rather than spreading across the graph's full spatial extent.
+This is consistent with two findings elsewhere in this report rather than
+an independent discovery: it's compatible with the out-of-distribution-size
+failure mode (Section 5.5), where a model trained on smaller, less
+spatially extensive graphs may not have learned to attend across a large
+image's full area, and with the node-size shortcut (Section 5.2), where
+attention gravitating toward node-blob regions is exactly the mechanism a
+model exploiting apparent node size would be expected to show. Individual
+per-image overlays are in `report/figures/gradcam/` for closer inspection
+of specific cases.
 
 ### 5.2 Shortcut-Learning Probe (Node-Size Confound)
 
@@ -255,9 +286,43 @@ and `report/figures/probe_variant_examples_grid.png`.*
 
 ### 5.3 Layout-Sensitivity Probe
 
-*Populate from `evaluation/results/probe_summary.csv` — compare `original` vs.
-`alt_layout` (Kamada-Kawai) variant rows, broken down by tier. Assess whether
-the model is overfit to `sfdp` layout topology.*
+The same 40 probe graphs (10 per tier) used in Section 5.2 were re-rendered
+with NetworkX's Kamada-Kawai layout in place of Graphviz `sfdp` — same node
+size, same edge style, only the node *positions* change — to test whether
+the model has overfit to `sfdp`'s specific spatial conventions.
+
+| Tier | Original vertex MAE | Alt-layout vertex MAE | Original edge MAE | Alt-layout edge MAE |
+|---|---|---|---|---|
+| tiny | 0.3 | 0.4 | 1.6 | 1.6 |
+| small | 1.0 | 1.0 | 3.3 | 4.9 |
+| medium | 3.5 | 3.8 | 16.3 | 13.2 |
+| large | 8.9 | 7.1 | 195.5 | 122.4 |
+| **overall (n=40)** | **3.425** | **3.075** | **54.175** | **35.525** |
+
+Vertex accuracy is essentially flat across the layout change at every tier.
+The overall edge MAE appears to *improve* under `alt_layout` (54.18 →
+35.53), but per-graph inspection shows this is the same kind of mean
+distortion flagged in Section 5.6: the median edge error is actually
+slightly *worse* under Kamada-Kawai (3.5 → 4.5), and only 22 of 40 graphs
+improve — the aggregate mean is dominated by one graph,
+`syn_dense_large_0069` (the same graph already flagged as the worst Day-7
+spot-check and shortcut-probe failure), whose edge error dropped by 512
+(1,084 → 572) under the new layout, alongside two other large/dense graphs
+that improved substantially (−90, −74); several small/medium graphs got
+moderately worse (+17, +14, +12) in the same swap. This is formalized as a
+null result in the Wilcoxon signed-rank test already reported in Section
+5.6, Part 4, item 1 (p=0.499 vertex, p=0.898 edge) — the layout swap
+produces no statistically significant change in either direction, in
+contrast to the node-size swap (Section 5.2), which does.
+
+Taken together with Section 5.2, this is a useful contrast: the model *is*
+measurably reliant on the node-size rendering convention, but is *not*
+measurably reliant on `sfdp`'s specific node-placement geometry — at least
+against this one alternative layout algorithm. This should not be read as
+general layout robustness (Section 7 notes the test covers only one
+alternative, Kamada-Kawai, out of many layout families with meaningfully
+different visual conventions), but within that scope, the model's accuracy
+does not appear contingent on `sfdp` specifically.
 
 ### 5.4 Ink-Coverage Correlational Analysis
 
