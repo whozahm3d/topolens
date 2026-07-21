@@ -517,3 +517,107 @@ Pearson r). Needs the raw per-graph pass regenerated before this can be run.
 - All 4 "free" Part 4 items are now complete (Wilcoxon significance test,
   warning-banner validation, pixel-only baseline, structural correlations).
   Decision on "cheap"/"real effort" tiers still pending.
+
+## Day 10 — 21 Jul 2026 — External Repo Audit: Six Flagged Issues Reviewed
+
+### Context / Goal
+
+An external review (not self-generated) flagged six potential problems in
+the repo: hardcoded paths, an incomplete final report, a config-duality
+risk, a git/.gitignore conflict, layout-consistency doubt, and dependency
+version gaps. Goal: verify each claim against the actual repo state (not
+just take the review at face value) and fix whatever was real.
+
+### What was done
+
+- **Problem 1 (hardcoded paths) — fixed.** `render/render_graphs.py`'s
+  hardcoded `E:\Anaconda\envs\py-dev\Library\bin` replaced with a
+  `CONDA_PREFIX`/`sys.prefix` lookup plus an optional `TOPOLENS_GRAPHVIZ_BIN`
+  override. `find_sfdp.py` rewritten as a portable diagnostic (`shutil.which`
+  first, then active-env prefix). `diagnose_graphviz.py` — reviewed, was
+  already portable (uses `sys.executable`/`shutil.which`), no fix needed;
+  since it and `find_sfdp.py`'s one-off purpose was already served, both
+  were deleted, along with `test_pydot.py` (ad-hoc smoke test) and
+  `temp_render/` (its output).
+- **Problem 2 (incomplete report) — fixed.** `FINAL_REPORT.md` Sections
+  1–4, 6, 7, and 8 written from `progress_log.md`, `report/log.md`,
+  `summary_comparison.csv`, and the model source files. Section 5 (already
+  complete) and the Appendix carried over unchanged, with one correction —
+  the Appendix's app description still said "Neo-Brutalist"/Syne, updated
+  to match the app's actual current "Cinematic Instrument"/Fraunces design.
+- **Problem 3 (config duality) — documentation fix (Option A), not a full
+  refactor.** Verified 8 of 18 scripts import both `config.py` and
+  `config.yaml`; the only genuine *conflict* (not just duplication) was
+  `config.yaml`'s `dataset.synthetic.node_range: [5, 150]` vs. `config.py`'s
+  `NODE_TIERS` (capped at 100) — confirmed nothing actually reads that yaml
+  field, so correcting it to `[5, 100]` was zero-risk. Added comments to
+  both files clarifying which file is authoritative for which values,
+  rather than doing a full single-source-of-truth refactor this late in
+  the timeline.
+- **Problem 4 (checkpoints vs. .gitignore) — not an actual issue.**
+  `git ls-files models/checkpoints/` confirmed only `.gitkeep` is tracked;
+  `cnn_best.pt`/`gnn_best.pt` were never committed. `.gitignore` was already
+  working correctly.
+- **Problem 5 (layout consistency) — not an actual issue, confirmed and
+  logged.** `labels_processed.csv`'s `layout_algorithm` column: 3,801/3,801
+  rows are `graphviz_sfdp`. Cross-checked via image file mtimes, which all
+  fall inside a single ~4.5-hour render batch — no evidence of a mixed
+  spring/sfdp dataset surviving from the Day 2 fallback incident.
+- **Problem 6 (dependency gaps) — fixed.** `requirements.txt` updated:
+  `pygraphviz` kept commented out (it needs a system-level Graphviz install
+  `pip` can't provide) but now documents why and confirms the pipeline
+  works without it via the pydot fallback; `torch`, `torch-geometric`, and
+  `streamlit` pinned to exact versions confirmed against the live
+  environment (`torch==2.13.0`, `torch-geometric==2.8.0`,
+  `streamlit==1.59.2` — note `torch` had drifted to 2.13.0 from the 2.11.0
+  mentioned in earlier logs, independent of this project). One claim in the
+  original review was found to be incorrect and not acted on: `evaluate.py`'s
+  `try/except` around `torch_geometric` does not fail silently — it raises
+  `ImportError` immediately, which is already correct fail-fast behavior.
+- **Added a new feature along the way:** live-app uploads (images and
+  graph files) are now saved to `render/novel_uploads/` with a
+  `manifest.csv` logging CNN/GCN/graph-statistic predictions and any known
+  ground truth, deduplicated by content hash, with the saved image named
+  after the uploaded file (not a hash) for traceability. Formerly-empty
+  `render/gephi_samples/` was repurposed/renamed for this rather than kept
+  as dead weight.
+
+### How
+
+Every claim was checked against the actual repo/data before being acted on,
+rather than trusted at face value — several of the six turned out to be
+wrong or already resolved (Problems 4 and 5), and one sub-claim within
+Problem 6 (the "silent failure" characterization) was also wrong. This
+caught real issues (the `node_range` conflict, the hardcoded paths) without
+introducing unnecessary churn on things that weren't actually broken.
+
+### Why
+
+**Why Option A (doc fix) over a full config.py/config.yaml refactor for
+Problem 3?** The project is 10 days into a 1-week deadline and essentially
+feature-complete; a full single-source-of-truth rewrite touching 18 files
+is real surface area for regression this late, for a conflict that (once
+verified) turned out to be dead/unused documentation rather than a live
+bug. The correction plus clarifying comments removes the actual risk
+(someone trusting the wrong `node_range` value) at effectively zero cost.
+
+**Why verify Problems 4 and 5 with actual commands instead of just fixing
+them as described?** Both turned out to be non-issues — `git ls-files`
+showed the checkpoints were never tracked, and the mtime/label check on
+the real data showed no mixed-layout contamination. Fixing things that
+aren't broken wastes the remaining time and risks introducing new bugs
+into a working pipeline.
+
+### Issues
+
+None blocking. `torch` version drift (2.11.0 → 2.13.0) happened
+independent of this project and wasn't something any of the six flagged
+problems anticipated — worth keeping an eye on if the environment gets
+upgraded again before submission.
+
+### Next
+
+All six flagged issues are resolved or confirmed closed. Remaining open
+item from Day 9: Sections 5.1 and 5.3 of `FINAL_REPORT.md` (Grad-CAM
+description, layout-sensitivity probe write-up) are still template
+placeholders — everything else in the report is now complete.

@@ -286,6 +286,13 @@ of day. Carried into Day 4 as a dependency check (confirmed unnecessary
 once Colab GPU training started, since Graphviz output is deterministic
 and the committed dataset already matched).
 
+- **Verified (retroactively):** `data/processed/labels_processed.csv`'s
+  `layout_algorithm` column confirms all 3,801 images are `graphviz_sfdp`
+  — no spring-layout images from the Day 2 fallback survived into the
+  final dataset. Confirmed independently via image file mtimes, which all
+  fall inside a single ~4.5-hour render batch (no mixed-timestamp evidence
+  of a partial re-render).
+
 ### Next
 
 Move training onto Colab GPU: smoke-test first, then full training run.
@@ -780,3 +787,71 @@ out retraining, etc.) — explicitly deferred until this point in the plan;
 (2) populating `FINAL_REPORT.md` Sections 1–4, 5.1, 5.5, 6, 7 (prose), and 8
 from `config.yaml`, the model/render scripts, and the still-unused
 evaluation figures — the actual write-up, not further analysis.
+
+# 2026-07-21 — External repo audit: six flagged issues reviewed and resolved
+
+Reviewed six issues flagged by an external audit rather than accepting them
+at face value; verified each against actual repo/data state before fixing.
+
+**1. Hardcoded paths (real).** `render_graphs.py`'s Graphviz-bin lookup
+changed from a literal `E:\Anaconda\envs\py-dev\Library\bin` to
+`CONDA_PREFIX`/`sys.prefix`-relative resolution with a `TOPOLENS_GRAPHVIZ_BIN`
+override. `find_sfdp.py` rewritten to use `shutil.which` first. Checked
+`diagnose_graphviz.py` — already portable, false positive in the audit;
+deleted anyway once its diagnostic purpose was served, along with
+`test_pydot.py` and `temp_render/`.
+
+**2. Incomplete report (real).** `FINAL_REPORT.md` Sections 1–4, 6, 7, 8
+written using `summary_comparison.csv` (test: CNN vertex MAE 3.20 vs. GCN
+19.05; held-out: CNN 10.62 vs. GCN 21.15 — full tables now in Section 3–4),
+`cnn_model.py`/`gnn_baseline.py`/`graph_statistic_baseline.py` source for
+Section 2.3, and `progress_log.md`/`report/log.md` for Sections 2.4 and the
+Discussion. Section 6 explicitly qualifies the CNN-vs-GCN win: the GCN
+baseline's only node feature is normalized degree (no clustering
+coefficient, spectral features, or positional encoding), so the comparison
+should be read as "CNN + sfdp layout beats a minimal-feature GCN," not a
+general CNN-vs-GNN claim. Appendix's app-design description corrected from
+stale "Neo-Brutalist" to current "Cinematic Instrument."
+
+**3. Config duality (partially real).** Grepped all 18 scripts under
+`data/`, `models/`, `evaluation/`, `app/`; 8 import both `config.py` and
+`load_yaml_config()`. Checked every consumer's actual key accesses — the
+only real conflict is `config.yaml`'s `dataset.synthetic.node_range:
+[5, 150]` against `config.py`'s `NODE_TIERS` (max 100); confirmed via grep
+that no script reads `dataset.synthetic.*` at runtime, so this was dead
+but misleading documentation, not a live bug. Fixed the value to `[5, 100]`
+and added clarifying header comments to both files rather than a full
+single-source-of-truth rewrite (Option A, not Option B — deemed the safer
+choice this close to the deadline).
+
+**4. Checkpoints tracked despite .gitignore (false).** `git ls-files
+models/checkpoints/` returned only `.gitkeep`. The audit's claim didn't
+match the actual repo — no fix applied.
+
+**5. Mixed-layout dataset (false, but worth confirming rigorously).**
+`labels_processed.csv`: 3,801/3,801 rows `graphviz_sfdp`. Cross-checked all
+image file mtimes — single cluster spanning ~4.5 hours (Jul 15 21:36 UTC –
+Jul 16 02:10 UTC), which rules out a mixed Day-2-spring + Day-3-sfdp dataset
+(that would show two separated mtime clusters). Added a retroactive
+verification note to `progress_log.md`'s Day 3 entry.
+
+**6. Dependency gaps (partially real).** `requirements.txt`: `torch>=2.0`
+→ `torch==2.13.0` (checked live env via `pip show`, found it had drifted
+from the 2.11.0 in earlier logs — independent of anything done here);
+`torch-geometric>=2.3` → `torch-geometric==2.8.0`; `streamlit>=1.30` →
+`streamlit==1.59.2`. `pygraphviz` kept commented (needs a system-level
+Graphviz install pip can't provide) but documented as optional-with-working-
+fallback rather than left unexplained. The audit's claim that
+`evaluate.py`'s `torch_geometric` import guard "fails silently" is
+incorrect — read the code, it does `raise ImportError(...)` immediately;
+no fix needed, noted as a correction to the audit rather than acted on.
+
+**Side addition:** `app.py`'s `save_novel_upload()` now persists every
+live-app upload (image or graph file) plus CNN/GCN/graph-statistic
+predictions to `render/novel_uploads/manifest.csv`, deduplicated by content
+hash, with the output image named after the uploaded file rather than a
+hash for traceability. Repurposed the previously dead/empty
+`render/gephi_samples/` folder for this rather than leaving it unused.
+
+All six audit items closed (three fixed as described, two found to be
+non-issues, one fixed with a scoped/lighter approach than proposed).
