@@ -5,14 +5,32 @@ tqdm>=4.60
 networkx>=3.0
 matplotlib>=3.7
 Pillow>=9.0
+
+# Optional: pygraphviz gives render_graphs.py its first-choice sfdp backend.
+# It requires the Graphviz C library/headers to be installed on the system
+# BEFORE `pip install` (not just a Python package), so it's commented out by
+# default to keep `pip install -r requirements.txt` working out of the box.
+# The pipeline runs correctly without it — render_graphs.py falls back to
+# pydot automatically (see the try/except import chain there). Uncomment
+# only if you've installed system Graphviz and want the pygraphviz path:
 # pygraphviz
+
 pydot
-torch>=2.0
+
+# Pinned to the exact versions this project was developed and evaluated on,
+# not just a floor — GPU/CUDA and torch-geometric APIs vary meaningfully
+# across minor versions, and results in this report (checkpoints, metrics)
+# were produced with these exact builds. Training ran on Colab (T4 GPU);
+# checkpoints are CUDA tensors and must be loaded with map_location="cpu"
+# on this CPU-only dev machine (already handled everywhere in the codebase).
+
+torch==2.13.0
 torchvision>=0.15
-torch-geometric>=2.3
+torch-geometric==2.8.0
+
 scikit-learn>=1.2
 jupyter>=1.0
 ipykernel>=6.0
-streamlit>=1.30
+streamlit==1.59.2
 gradio>=4.0
 scipy>=1.10
