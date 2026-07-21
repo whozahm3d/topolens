@@ -7,3 +7,4 @@ timestamp,content_hash,saved_filename,original_filename,source_type,pred_vertice
 2026-07-21T10:14:50.808365+00:00,ac970c6940e8450b,real_PROTEINS_0099.png,real_PROTEINS_0099.graphml,graph_upload,58.0,73.0,17.0,34.0,88.0,1051.0,88.0,160.0
 2026-07-21T10:15:09.034486+00:00,acaea7cd476447f6,syn_barabasi_albert_large_0009.png,syn_barabasi_albert_large_0009.graphml,graph_upload,80.0,401.0,35.0,60.0,79.0,846.0,79.0,370.0
 2026-07-21T10:15:24.275557+00:00,94c7c5b0054913f6,syn_barabasi_albert_large_0033.png,syn_barabasi_albert_large_0033.graphml,graph_upload,53.0,59.0,29.0,33.0,74.0,741.0,74.0,73.0
+2026-07-21T11:13:39.424327+00:00,158dfd12739c1323,real_MUTAG_0007.png,real_MUTAG_0007.png,image_upload,15.0,14.0,,,,,16.0,17.0
