@@ -1351,6 +1351,8 @@ def render_models_section(model: CustomCNNRegressor) -> None:
             st.markdown("##### GCN Training & Validation Loss")
             st.line_chart(df_gnn_plot)
 
+
+# To save images during live app demo
 def save_novel_upload(
     pil_img: Image.Image,
     original_filename: str,
@@ -1364,14 +1366,16 @@ def save_novel_upload(
     pred_v_stat: Optional[float] = None,
     pred_e_stat: Optional[float] = None,
 ) -> None:
-    """Persist a live-app upload + its CNN prediction to data/novel_uploads/.
+    """Persist a live-app upload's rendered image + predictions to disk.
 
-    Kept separate from data/novel_images/ (the hand-curated validation set used
-    in the report) so automatic logging never mixes with or overwrites that set.
-    Deduplicates by image content hash so Streamlit reruns don't create repeat rows.
-    Best-effort: logging failures never break the UI.
+    The saved image keeps the uploaded file's own name (so a rendered graph
+    is easy to trace back to the .graphml/.csv/etc. that produced it) rather
+    than a content-hash filename. Deduplicates by content hash in the
+    manifest so Streamlit reruns don't create repeat rows; if two different
+    uploads share the same filename, a numeric suffix is appended so neither
+    image is overwritten. Best-effort: logging failures never break the UI.
     """
-    upload_dir = PROJECT_ROOT / "data" / "novel_uploads"
+    upload_dir = PROJECT_ROOT / "render" / "novel_uploads"  # match your renamed folder
     upload_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = upload_dir / "manifest.csv"
 
@@ -1384,7 +1388,14 @@ def save_novel_upload(
     if not manifest_df.empty and content_hash in manifest_df["content_hash"].values:
         return  # already logged this exact image
 
-    saved_name = f"{content_hash}.png"
+    stem = Path(original_filename).stem
+    saved_name = f"{stem}.png"
+    existing_names = set(manifest_df["saved_filename"]) if not manifest_df.empty else set()
+    suffix = 1
+    while saved_name in existing_names:
+        saved_name = f"{stem}_{suffix}.png"
+        suffix += 1
+
     with open(upload_dir / saved_name, "wb") as f:
         f.write(img_bytes)
 
