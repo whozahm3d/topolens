@@ -1531,6 +1531,25 @@ def render_predict_section(
     
     gcn_v = gcn_e = stat_v = stat_e = None
 
+    if G is not None:
+        fallback_density = None
+        try:
+            gnn_model, fallback_density = load_graph_comparison_assets()
+            gcn_v, gcn_e = predict_gcn_graph_counts(gnn_model, G)
+        except Exception:
+            pass
+
+        try:
+            if fallback_density is None:
+                try:
+                    _, fallback_density = build_density_table(PROJECT_ROOT / "data" / "splits" / "train.csv")
+                except Exception:
+                    fallback_density = None
+            if fallback_density is not None:
+                stat_v, stat_e = predict_graph_stat_counts(G, fallback_density)
+        except Exception:
+            pass
+
     if is_graph_upload and G is not None:
         st.markdown('<hr class="topo-divider">', unsafe_allow_html=True)
         st.markdown(
@@ -1540,35 +1559,12 @@ def render_predict_section(
 
         comparison_rows = [
             {"Model": "CNN", "Predicted Vertices": pred_v, "Predicted Edges": pred_e},
+            {"Model": "GCN", "Predicted Vertices": gcn_v if gcn_v is not None else "data unavailable", "Predicted Edges": gcn_e if gcn_e is not None else "data unavailable"},
+            {"Model": "Graph-statistic baseline", "Predicted Vertices": stat_v if stat_v is not None else "data unavailable", "Predicted Edges": stat_e if stat_e is not None else "data unavailable"},
         ]
-
-        fallback_density = None
-
-        try:
-            gnn_model, fallback_density = load_graph_comparison_assets()
-            gcn_v, gcn_e = predict_gcn_graph_counts(gnn_model, G)
-            comparison_rows.append({"Model": "GCN", "Predicted Vertices": gcn_v, "Predicted Edges": gcn_e})
-        except Exception as exc:
-            comparison_rows.append({"Model": "GCN", "Predicted Vertices": "data unavailable", "Predicted Edges": "data unavailable"})
-            st.warning(f"GCN comparison unavailable: {exc}")
-            if fallback_density is None:
-                try:
-                    _, fallback_density = build_density_table(PROJECT_ROOT / "data" / "splits" / "train.csv")
-                except Exception:
-                    fallback_density = None
-
-        try:
-            if fallback_density is None:
-                raise RuntimeError("fallback density unavailable")
-            stat_v, stat_e = predict_graph_stat_counts(G, fallback_density)
-            comparison_rows.append({"Model": "Graph-statistic baseline", "Predicted Vertices": stat_v, "Predicted Edges": stat_e})
-        except Exception as exc:
-            comparison_rows.append({"Model": "Graph-statistic baseline", "Predicted Vertices": "data unavailable", "Predicted Edges": "data unavailable"})
-            st.warning(f"Graph-statistic comparison unavailable: {exc}")
-
         comparison_df = pd.DataFrame(comparison_rows)
         st.table(comparison_df)
-    else:
+    elif not is_graph_upload:
         st.markdown(
             "<div class='neobrutalist-card'><p style='font-size:0.9rem; margin:0;'>Only CNN inference is available for image uploads — GCN and the graph-statistic baseline require the underlying graph topology, which isn't recoverable from a rendered image alone.</p></div>",
             unsafe_allow_html=True,
@@ -1664,18 +1660,44 @@ def render_predict_section(
             unsafe_allow_html=True,
         )
         
-        err_v = abs(true_v - pred_v)
-        err_e = abs(true_e - pred_e)
-        
+        err_v_cnn = abs(true_v - pred_v)
+        err_e_cnn = abs(true_e - pred_e)
+        acc_v_cnn = f"{max(0, 100 - (err_v_cnn / true_v * 100)):.1f}%" if true_v > 0 else "N/A"
+        acc_e_cnn = f"{max(0, 100 - (err_e_cnn / true_e * 100)):.1f}%" if true_e > 0 else "N/A"
+
+        if gcn_v is not None and gcn_e is not None:
+            err_v_gcn = abs(true_v - gcn_v)
+            err_e_gcn = abs(true_e - gcn_e)
+            acc_v_gcn = f"{max(0, 100 - (err_v_gcn / true_v * 100)):.1f}%" if true_v > 0 else "N/A"
+            acc_e_gcn = f"{max(0, 100 - (err_e_gcn / true_e * 100)):.1f}%" if true_e > 0 else "N/A"
+        else:
+            acc_v_gcn = "N/A"
+            acc_e_gcn = "N/A"
+
+        if stat_v is not None and stat_e is not None:
+            err_v_stat = abs(true_v - stat_v)
+            err_e_stat = abs(true_e - stat_e)
+            acc_v_stat = f"{max(0, 100 - (err_v_stat / true_v * 100)):.1f}%" if true_v > 0 else "N/A"
+            acc_e_stat = f"{max(0, 100 - (err_e_stat / true_e * 100)):.1f}%" if true_e > 0 else "N/A"
+        else:
+            acc_v_stat = "N/A"
+            acc_e_stat = "N/A"
+
         df_compare = pd.DataFrame({
             "Property": ["Vertices (Nodes)", "Edges (Connections)"],
             "Ground Truth": [true_v, true_e],
             "CNN Prediction": [pred_v, pred_e],
-            "Absolute Error": [err_v, err_e],
-            "Accuracy": [
-                f"{max(0, 100 - (err_v / true_v * 100)):.1f}%" if true_v > 0 else "N/A",
-                f"{max(0, 100 - (err_e / true_e * 100)):.1f}%" if true_e > 0 else "N/A"
-            ]
+            "GCN Prediction": [
+                gcn_v if (gcn_v is not None) else "N/A",
+                gcn_e if (gcn_e is not None) else "N/A"
+            ],
+            "Baseline Prediction": [
+                stat_v if (stat_v is not None) else "N/A",
+                stat_e if (stat_e is not None) else "N/A"
+            ],
+            "Accuracy (CNN)": [acc_v_cnn, acc_e_cnn],
+            "Accuracy (GCN)": [acc_v_gcn, acc_e_gcn],
+            "Accuracy (Baseline)": [acc_v_stat, acc_e_stat],
         })
         
         st.table(df_compare)
