@@ -1,0 +1,9 @@
+timestamp,content_hash,saved_filename,original_filename,source_type,pred_vertices_cnn,pred_edges_cnn,pred_vertices_gcn,pred_edges_gcn,pred_vertices_baseline,pred_edges_baseline,true_vertices,true_edges
+2026-07-21T10:09:59.804724+00:00,86ff30fc9c6915f3,dense_test_150n.png,dense_test_150n.graphml,graph_upload,90.0,1688.0,28.0,178.0,150.0,3067.0,,
+2026-07-21T10:11:49.281180+00:00,719519774b2f37b1,real_PROTEINS_0701.png,real_PROTEINS_0701.graphml,graph_upload,5.0,6.0,6.0,10.0,4.0,2.0,4.0,6.0
+2026-07-21T10:13:57.051385+00:00,c7df78a997d37e32,syn_dense_medium_0001.png,syn_dense_medium_0001.graphml,graph_upload,28.0,160.0,29.0,91.0,27.0,96.0,27.0,163.0
+2026-07-21T10:14:15.516440+00:00,c786a1b416621f05,real_PROTEINS_0010.png,real_PROTEINS_0010.graphml,graph_upload,11.0,11.0,37.0,125.0,11.0,15.0,11.0,19.0
+2026-07-21T10:14:36.882761+00:00,e34133a10f6a98cb,real_PROTEINS_0033.png,real_PROTEINS_0033.graphml,graph_upload,32.0,38.0,26.0,40.0,58.0,454.0,58.0,116.0
+2026-07-21T10:14:50.808365+00:00,ac970c6940e8450b,real_PROTEINS_0099.png,real_PROTEINS_0099.graphml,graph_upload,58.0,73.0,17.0,34.0,88.0,1051.0,88.0,160.0
+2026-07-21T10:15:09.034486+00:00,acaea7cd476447f6,syn_barabasi_albert_large_0009.png,syn_barabasi_albert_large_0009.graphml,graph_upload,80.0,401.0,35.0,60.0,79.0,846.0,79.0,370.0
+2026-07-21T10:15:24.275557+00:00,94c7c5b0054913f6,syn_barabasi_albert_large_0033.png,syn_barabasi_albert_large_0033.graphml,graph_upload,53.0,59.0,29.0,33.0,74.0,741.0,74.0,73.0
