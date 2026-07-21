@@ -477,7 +477,7 @@ topolens/
 
 ### Acknowledgments & Project Context
 
-Developed as an intensive 1-week empirical research investigation into visual graph learning.
+Developed as an intensive 9-day empirical research investigation (13–21 July 2026, weekend included) into visual graph learning.
 
 Special thanks to the open-source maintainers of:
 
