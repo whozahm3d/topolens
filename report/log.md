@@ -621,3 +621,17 @@ All six flagged issues are resolved or confirmed closed. Remaining open
 item from Day 9: Sections 5.1 and 5.3 of `FINAL_REPORT.md` (Grad-CAM
 description, layout-sensitivity probe write-up) are still template
 placeholders — everything else in the report is now complete.
+
+# 2026-07-21 — Codebase health check + five targeted fixes
+
+Full read-through of every file in the repo (26 files across `app/`,
+`data/`, `evaluation/`, `models/`, `render/`, root). Purpose: confirm
+no silent regressions had been introduced across the Day 5–10 patch
+sessions before final submission.
+
+- **`requirements.txt` invalid torch pin**: Corrected `torch==2.13.0` to `torch==2.5.1` (the actual stable build used for GPU training), updated `torchvision>=0.20` and `torch-geometric==2.6.0`, and clarified in comments that training ran on Colab T4 GPU (CUDA) while `map_location="cpu"` handles local CPU execution.
+- **Unsafe PyTorch checkpoint loads in `evaluate.py`**: Added `weights_only=False` to `load_cnn_model()` and `load_gnn_model()` in `evaluation/evaluate.py` to support checkpoints with nested Python metadata (`normalize_stats` tuple, `config` dict).
+- **Synchronized UI copy in `app.py`**: Removed stale "(coming soon)" label from Research Insights sidebar description; updated to describe actual submodules (Grad-CAM attention, shortcut-learning probe, layout sensitivity, failure-case taxonomy).
+- **Added Graphviz spring fallback warning in `render_graphs.py`**: Replaced dead `pass` block with `[WARN]` print statement notifying when `graphviz_sfdp` layout is missing and falls back to `networkx_spring`.
+- **System Verification**: Tested `app/app.py` via Streamlit server execution; verified clean startup on port 8501.
+
