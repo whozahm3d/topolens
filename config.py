@@ -1,6 +1,10 @@
 # config.py
-# Global configuration file for Topolens Phase 1.
-# Imports from this file ensure consistency across dataset generation, loading, rendering, and validation.
+# Source of truth for dataset generation/rendering constants (NODE_TIERS,
+# GENERATORS, paths, IMAGE_SIZE/DPI, RANDOM_SEED). These values are mirrored
+# in config.yaml's dataset:/render: blocks for human-readable documentation
+# only — config.yaml is NOT read for these; keep both in sync by hand if
+# either changes. Training hyperparameters (batch size, epochs, lr, GCN
+# hidden dim) live only in config.yaml and are loaded via load_yaml_config().
 
 RANDOM_SEED = 42
 

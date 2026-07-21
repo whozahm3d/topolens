@@ -1,6 +1,11 @@
 # Topolens — Global Configuration
-# Single source of truth for reproducibility. All scripts must import
-# values from here rather than hardcoding them.
+# Training/eval hyperparameters, dataset manifest, and project metadata.
+# NOTE: config.py (not this file) is the source of truth for values that
+# drive actual dataset generation/rendering (NODE_TIERS, GENERATORS, paths,
+# IMAGE_SIZE/DPI, RANDOM_SEED) — those are duplicated here for documentation
+# purposes only and must be kept in sync by hand. Fields under model:,
+# evaluation:, and render.node_size ARE read directly by scripts (see
+# load_yaml_config() in topolens_utils.py).
 
 project:
   name: "Topolens"
@@ -9,7 +14,9 @@ project:
 dataset:
   synthetic:
     total_graphs: 2500
-    node_range: [5, 150]
+    node_range: [5, 100]   # must match config.py's NODE_TIERS (tiny→large caps at 100).
+                            # This field is documentation only — no script reads it;
+                            # actual generation uses config.py's NODE_TIERS dict.
     generators:
       erdos_renyi:
         count: 500
