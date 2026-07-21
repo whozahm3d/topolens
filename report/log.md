@@ -1,4 +1,3 @@
-
 # 2026-07-13 — Project Setup & Planning
 
 - Installed Python and Git, initialized GitHub repository (github.com/whozahm3d/topolens)
@@ -411,7 +410,7 @@
 - Ran the two "free" Part 4 analyses that required no new data collection, only
   statistical treatment of existing CSVs (`probe_predictions.csv`,
   `failure_case_categories.csv`). Full results compiled into
-  `evaluation/results/topolens_part4_free_analyses_results.csv`.
+  `evaluation/results/topolens_free_analyses_results.csv`.
 
 **Wilcoxon signed-rank test on probe deltas (n=40, paired per graph):**
 
@@ -518,7 +517,80 @@ Pearson r). Needs the raw per-graph pass regenerated before this can be run.
   warning-banner validation, pixel-only baseline, structural correlations).
   Decision on "cheap"/"real effort" tiers still pending.
 
-## Day 10 — 21 Jul 2026 — External Repo Audit: Six Flagged Issues Reviewed
+# 2026-07-20 — Correction: Sections 5.2/5.4/5.5 were never actually written; README and cross-file accuracy pass
+
+- **The actual bug.** Despite this same day's entry above stating that Part
+  4's four results were "folded into `FINAL_REPORT.md` Section 5.6... extended
+  Sections 5.2–5.4 with cross-references," a direct read of the file showed
+  Sections 5.2 (shortcut-learning probe), 5.4 (ink-coverage correlations),
+  and 5.5 (failure-case taxonomy) still contained their original template
+  placeholder text (`*Populate from ...*`) verbatim. Only the cross-references
+  *from* other sections *into* 5.2/5.4/5.5 had been added — the primary
+  write-ups themselves were never done. (Separately, the Day 10 entry's own
+  "remaining open item" note — which named Sections 5.1 and 5.3 as the
+  outstanding placeholders — was itself inaccurate; 5.1 and 5.3 were already
+  complete, and 5.2/5.4/5.5 were the actual gap. Left that entry's wording
+  as originally written rather than silently edited, per this file's own
+  correction convention, and noting the discrepancy here instead.)
+- Wrote the missing prose and tables for all three sections directly from
+  source data: `evaluation/results/probe_summary.csv` (5.2),
+  `evaluation/results/ink_coverage_correlations.csv` (5.4), and
+  `evaluation/results/failure_case_summary.csv` plus
+  `failure_taxonomy.py`'s `categorize_row()` precedence logic (5.5).
+- While writing 5.4, formally resolved the open Issues note from earlier in
+  this same day's entry (the unreconciled `ink_fraction` figure): confirmed
+  `evaluation/image_statistics.py` (`white_threshold=250`, source for 5.4's
+  correlation table) and `evaluation/compute_structural_pixel_features.py`
+  (`bg_threshold=200`, source for the Section 5.6 pixel-only-baseline
+  regression) use different background thresholds and were never reconciled
+  to one canonical `ink_fraction` definition. Documented this as an inline
+  caveat in 5.4 and as a new Limitations bullet in Section 7, rather than
+  silently picking one number.
+- Fixed a second `FINAL_REPORT.md` bug found while verifying the Appendix:
+  the Appendix and Section 5.6 cited
+  `evaluation/results/topolens_part4_free_analyses_results.csv`, but the file
+  actually on disk is `topolens_free_analyses_results.csv` (no `part4_`
+  prefix). Corrected both references.
+- README.md accuracy pass, four issues found and fixed:
+  - "Core Components" described the CNN as `3→16→32→64→128` channels with
+    `3×3` adaptive pooling and a `1152→128→2` head — doesn't match
+    `cnn_model.py`. Corrected to `3→32→64→128→256`, `1×1` pooling,
+    `256→128→2` head.
+  - Quickstart and the repo-structure tree referenced `models/train_gnn.py`,
+    which does not exist. GCN training is invoked via `gnn_baseline.py`'s
+    own CLI (`python models/gnn_baseline.py [--smoke-test]`). Fixed both
+    references; updated the tree comment to note the file is model +
+    self-contained training CLI in one.
+  - The probe table and the Model Limitations section both overstated the
+    layout-sensitivity probe — "Kamada-Kawai layout handles dense clusters
+    well" and "measurable edge MAE variance" — when this same day's Wilcoxon
+    test above found no statistically significant effect in either
+    direction (p=0.499 vertex, p=0.898 edge) and traced the apparent edge
+    improvement to a single outlier graph. Corrected both.
+  - The repo-structure tree was missing several files that exist on disk
+    (`data/validate_dataset.py`; `evaluation/image_statistics.py`,
+    `compute_structural_pixel_features.py`, `interpretation.py`,
+    `generate_dual_trigger_testcase.py`; root-level `topolens_utils.py` and
+    `test_render.py`). Added all six.
+  - "Developed as an intensive 1-week empirical research investigation" was
+    also corrected — the actual span is 13–21 Jul 2026 inclusive, 9 calendar
+    days (weekend included), not 7. See the `progress_log.md` note below for
+    the related day-numbering fix this surfaced.
+- **`progress_log.md` day-numbering correction.** Its `## Day N` headers had
+  drifted out of sync with the actual 9-day calendar span: "Day 8" was
+  missing entirely (Day 7 → Day 9), and a 21-Jul entry was left unlabeled
+  (no `Day` prefix) followed by a "Day 11" header — overcounting the true
+  span as 11 labeled days against 9 actual calendar dates. Renumbered:
+  former "Day 9" (20 Jul, this day's Part 4 entry) → **Day 8**; the
+  unlabeled 21-Jul external-audit entry → **Day 9**; former "Day 11" (21 Jul,
+  comprehensive codebase audit) → **Day 10**. Two entries now correctly share
+  21 Jul (Day 9 and Day 10), consistent with two distinct work sessions
+  having been logged that day.
+- Net effect: no analysis was redone and no numbers changed — this was a
+  documentation-completeness and cross-file-accuracy pass, not a
+  re-evaluation of the model or the pipeline.
+
+# 2026-07-21 — External Repo Audit: Six Flagged Issues Reviewed
 
 ### Context / Goal
 
@@ -618,7 +690,7 @@ upgraded again before submission.
 ### Next
 
 All six flagged issues are resolved or confirmed closed. Remaining open
-item from Day 9: Sections 5.1 and 5.3 of `FINAL_REPORT.md` (Grad-CAM
+item from Day 8: Sections 5.1 and 5.3 of `FINAL_REPORT.md` (Grad-CAM
 description, layout-sensitivity probe write-up) are still template
 placeholders — everything else in the report is now complete.
 
@@ -634,4 +706,3 @@ sessions before final submission.
 - **Synchronized UI copy in `app.py`**: Removed stale "(coming soon)" label from Research Insights sidebar description; updated to describe actual submodules (Grad-CAM attention, shortcut-learning probe, layout sensitivity, failure-case taxonomy).
 - **Added Graphviz spring fallback warning in `render_graphs.py`**: Replaced dead `pass` block with `[WARN]` print statement notifying when `graphviz_sfdp` layout is missing and falls back to `networkx_spring`.
 - **System Verification**: Tested `app/app.py` via Streamlit server execution; verified clean startup on port 8501.
-
