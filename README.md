@@ -112,13 +112,146 @@ Pearson correlation coefficients ($r$) analyzing pixel coverage vs. topological 
 
 ---
 
-### 5. Grad-CAM Spatial Interpretability
+## 🖼️ Visual Figures & Diagnostic Gallery
+
+### 1. Dataset & Rendering Foundations
 
 <div align="center">
+  <table border="0">
+    <tr>
+      <td align="center" width="50%">
+        <img src="report/figures/node_edge_distributions_overall.png" width="420" alt="Overall Node & Edge Distributions"/><br/>
+        <b>Figure 1: Overall Dataset Distributions</b><br/>
+        <i>Distribution of node count (N) and edge count (E) across the 2,500 synthetic graphs.</i>
+      </td>
+      <td align="center" width="50%">
+        <img src="report/figures/graph_counts_by_tier.png" width="420" alt="Graph Counts by Tier"/><br/>
+        <b>Figure 2: Stratified Tier Counts</b><br/>
+        <i>Balanced distribution across Tiny (≤10), Small (10–25), Medium (25–50), and Large (50–100) tiers.</i>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="report/figures/node_edge_distributions_by_generator.png" width="420" alt="Distributions by Generator"/><br/>
+        <b>Figure 3: Generator Family Breakdown</b><br/>
+        <i>Node and edge density ranges for Erdős–Rényi, Barabási–Albert, Watts–Strogatz, Random Tree, and Dense ER generators.</i>
+      </td>
+      <td align="center" width="50%">
+        <img src="report/figures/sample_render_grid.png" width="420" alt="Sample Render Grid"/><br/>
+        <b>Figure 4: 12-Image Render Sample Grid</b><br/>
+        <i>Sample 224×224 RGB renders produced by Graphviz sfdp layout.</i>
+      </td>
+    </tr>
+  </table>
+</div>
 
-![Grad-CAM Attention Grid](report/figures/gradcam_grid_by_generator.png)  
-*Figure 3: Grad-CAM spatial activation maps generated at layer `features[3]` comparing Vertex target attention vs. Edge target attention across generator families.*
+---
 
+### 2. Model Performance & Scatter Diagnostics
+
+<div align="center">
+  <table border="0">
+    <tr>
+      <td align="center" width="50%">
+        <img src="report/figures/cnn_pred_num_vertices_scatter_test.png" width="420" alt="Test Vertex Scatter"/><br/>
+        <b>Figure 5: Synthetic Test Vertex Predictions</b><br/>
+        <i>Faceted scatter plot of predicted vs. true vertex count across generator families on synthetic test split.</i>
+      </td>
+      <td align="center" width="50%">
+        <img src="report/figures/cnn_pred_num_edges_scatter_test.png" width="420" alt="Test Edge Scatter"/><br/>
+        <b>Figure 6: Synthetic Test Edge Predictions</b><br/>
+        <i>Faceted scatter plot of predicted vs. true edge count across generator families on synthetic test split.</i>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="report/figures/cnn_pred_num_vertices_scatter_held_out.png" width="420" alt="Held-Out Vertex Scatter"/><br/>
+        <b>Figure 7: Real Held-Out Vertex Predictions</b><br/>
+        <i>Evaluated on MUTAG and PROTEINS graphs, showing strong small/medium alignment and out-of-distribution plateauing.</i>
+      </td>
+      <td align="center" width="50%">
+        <img src="report/figures/cnn_pred_num_edges_scatter_held_out.png" width="420" alt="Held-Out Edge Scatter"/><br/>
+        <b>Figure 8: Real Held-Out Edge Predictions</b><br/>
+        <i>Predicted vs. true edge count on real-world biological datasets.</i>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+### 3. Shortcut-Learning & Probe Interventions
+
+<div align="center">
+  <table border="0">
+    <tr>
+      <td align="center" width="50%">
+        <img src="report/figures/probe_variant_mae_comparison.png" width="440" alt="Probe MAE Comparison"/><br/>
+        <b>Figure 9: Probe Intervention MAE Bar Chart</b><br/>
+        <i>Vertex MAE triples when node rendering size is fixed, proving reliance on visual dot scaling.</i>
+      </td>
+      <td align="center" width="50%">
+        <img src="report/figures/probe_variant_examples_grid.png" width="440" alt="Probe Variant Examples"/><br/>
+        <b>Figure 10: Probe Visual Variant Comparison</b><br/>
+        <i>Visual comparisons of Original ($sfdp$) vs. Constant Node Size vs. Alternative Layout ($Kamada\text{-}Kawai$).</i>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+### 4. Failure Taxonomy & Ink Coverage Analysis
+
+<div align="center">
+  <table border="0">
+    <tr>
+      <td align="center" width="50%">
+        <img src="report/figures/error_vs_num_nodes.png" width="420" alt="Error vs Num Nodes"/><br/>
+        <b>Figure 11: Edge Error vs. True Node Count</b><br/>
+        <i>Absolute edge error vs. node count categorized by taxonomy buckets (Normal, Clutter, OOD Size).</i>
+      </td>
+      <td align="center" width="50%">
+        <img src="report/figures/error_vs_density.png" width="420" alt="Error vs Density"/><br/>
+        <b>Figure 12: Edge Error vs. Graph Density</b><br/>
+        <i>Absolute edge error vs. graph density, confirming high density clutter is well-handled for in-distribution sizes.</i>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" width="50%">
+        <img src="report/figures/ink_coverage_vs_node_count.png" width="420" alt="Ink Coverage vs Node Count"/><br/>
+        <b>Figure 13: Ink Fraction vs. Node Count</b><br/>
+        <i>Ink fraction vs. node count grouped by sparse, medium, and dense graph buckets.</i>
+      </td>
+      <td align="center" width="50%">
+        <img src="report/figures/component_size_vs_node_count.png" width="420" alt="Component Size vs Node Count"/><br/>
+        <b>Figure 14: Connected Component Size (Log-Log)</b><br/>
+        <i>Mean connected component area in pixels vs. true node count on log-log scale.</i>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+### 5. Grad-CAM Interpretability & Failure Grids
+
+<div align="center">
+  <p>
+    <img src="report/figures/gradcam_grid_by_generator.png" width="750" alt="Grad-CAM Grid by Generator"/><br/>
+    <b>Figure 15: Grad-CAM Activation Maps Across Generators</b><br/>
+    <i>Layer <code>features[3]</code> spatial attention heatmaps comparing Vertex target attention (left) vs. Edge target attention (right).</i>
+  </p>
+  <p>
+    <img src="report/figures/gradcam_grid_failure_cases.png" width="750" alt="Grad-CAM Failure Cases"/><br/>
+    <b>Figure 16: Grad-CAM Attention Maps on Failure Cases</b><br/>
+    <i>Spatial attention patterns on worst-error graph predictions.</i>
+  </p>
+  <p>
+    <img src="report/figures/worst_case_image_grid.png" width="780" alt="Worst Case Image Grid"/><br/>
+    <b>Figure 17: Top 15 Worst-Case Error Grid</b><br/>
+    <i>Ranked top 15 worst-case edge prediction errors with true vs. predicted counts and taxonomy overlay badges.</i>
+  </p>
 </div>
 
 ---
