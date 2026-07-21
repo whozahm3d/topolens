@@ -64,7 +64,7 @@ Controlled intervention probes ($N=40$ paired graphs) isolate *what* visual feat
 | **Overall** | `alt_layout` | **3.08** | **35.53** | 40 | No significant layout sensitivity ($p = 0.499$) |
 | Large Tier | `original` | 8.90 | 195.50 | 10 | $50 \le N \le 100$ baseline |
 | Large Tier | `constant_node_size` | 16.70 | 82.80 | 10 | Vertex error doubles on large graphs |
-| Large Tier | `alt_layout` | 7.10 | 122.40 | 10 | Kamada-Kawai layout handles dense clusters well |
+| Large Tier | `alt_layout` | 7.10 | 122.40 | 10 | Apparent edge-MAE drop is a mean-distortion artifact from one outlier graph, not a real effect (Wilcoxon p=0.898, no significant layout sensitivity) |
 | Medium Tier | `constant_node_size` | 15.30 | 51.70 | 10 | $25 \le N \le 50$ (Vertex MAE: $3.50 \to 15.30$) |
 | Small Tier | `constant_node_size` | 8.50 | 21.20 | 10 | $10 \le N \le 25$ (Vertex MAE: $1.00 \to 8.50$) |
 
@@ -261,7 +261,7 @@ Pearson correlation coefficients ($r$) analyzing pixel coverage vs. topological 
 - **Out-of-distribution size ceiling ($n > 100$)**: The training set contains no graphs above 100 nodes. On the held-out real-world split ($n = 67$ graphs exceeding this ceiling), held-out vertex MAE is **96.64** and edge MAE is **203.6**, compared with vertex MAE **6.67** / edge MAE **20.79** for the 1,090 in-distribution graphs in the same split. Do not use predictions on large graphs without awareness of this gap.
 - **Node-size shortcut confound**: The renderer scales node radius as $\max(15, 4000/n)$, so larger nodes signal fewer vertices. A shortcut probe (constant node size) raises vertex MAE from **3.42** to **10.47** overall — strong evidence the model exploits visual node size rather than topology alone to count vertices.
 - **Synthetic training distribution**: The model was trained entirely on NetworkX-generated graphs (Erdős–Rényi, Barabási–Albert, Watts–Strogatz, random trees, dense). Graphs with markedly different visual structure — hierarchical, planar, or domain-specific layouts — may fall outside the learned distribution.
-- **Single layout algorithm**: All training images use Graphviz `sfdp` (spring-electrical). An alternative-layout probe (Kamada-Kawai) shows minimal vertex MAE change but measurable edge MAE variance, indicating partial layout sensitivity for edge estimation.
+- **Single layout algorithm**: All training images use Graphviz `sfdp` (spring-electrical). An alternative-layout probe (Kamada-Kawai) shows no statistically significant change in either vertex or edge MAE (Wilcoxon p=0.499 vertex, p=0.898 edge) — a reassuring but narrow result that does not establish robustness to layout families with substantially different visual conventions (e.g. hierarchical or circular layouts), none of which were tested.
 
 ---
 
@@ -302,8 +302,8 @@ flowchart LR
    - **Synthetic**: 2,500 graphs across 5 generator families (Erdős–Rényi, Barabási–Albert, Watts–Strogatz, Random Trees, Dense ER) × 4 node tiers (tiny $\le 10$, small $10\text{–}25$, medium $25\text{–}50$, large $50\text{–}100$).
    - **Real-World**: MUTAG (188 graphs) & PROTEINS (1,113 graphs), including an out-of-distribution "xlarge" tier up to 620 nodes.
 2. **Custom CNN Regressor** (`models/cnn_model.py`):
-   - 4-Block Conv2D stack with BatchNorm, ReLU, and MaxPool2D ($3 \to 16 \to 32 \to 64 \to 128$ channels).
-   - Adaptive Average Pooling ($3 \times 3$) $\to$ Linear MLP head ($1152 \to 128 \to 2$).
+   - 4-Block Conv2D stack with BatchNorm, ReLU, and MaxPool2D ($3 \to 32 \to 64 \to 128 \to 256$ channels).
+   - Adaptive Average Pooling ($1 \times 1$) $\to$ Linear MLP head ($256 \to 128 \to 2$), dropout 0.2.
    - Log-transformed targets ($\log(1 + y)$) with MSE loss and Adam optimizer.
 3. **Graph Neural Network Baseline** (`models/gnn_baseline.py`):
    - 3-Layer GCN architecture using PyTorch Geometric.
@@ -370,8 +370,11 @@ python models/train_cnn.py --smoke-test
 # Train CNN Regressor (full training)
 python models/train_cnn.py
 
-# Train GCN Baseline
-python models/train_gnn.py
+# Train GCN Baseline (smoke test: 2 epochs on tiny subset)
+python models/gnn_baseline.py --smoke-test
+
+# Train GCN Baseline (full training)
+python models/gnn_baseline.py
 ```
 
 ### Running Evaluation & Diagnostics
@@ -410,19 +413,19 @@ topolens/
 │   ├── splits/                    # Train, val, test, and held-out CSV splits
 │   ├── generate_synthetic.py      # NetworkX synthetic graph generator
 │   ├── load_tu_datasets.py        # PyG MUTAG / PROTEINS dataset importer
-│   └── make_splits.py             # Stratified dataset split script
+│   ├── make_splits.py             # Stratified dataset split script
+│   └── validate_dataset.py        # Dataset integrity validator (labels vs. rendered graphs)
 ├── render/
 │   ├── render_graphs.py           # Core Graphviz/NetworkX graph rendering engine
 │   ├── render_probe_variants.py   # Controlled probe variant generator
 │   └── novel_uploads/             # User-uploaded application testing images & manifest
 ├── models/
 │   ├── cnn_model.py               # Custom 4-block CNN Regressor architecture
-│   ├── gnn_baseline.py            # PyG 3-layer GraphCountGCN model
+│   ├── gnn_baseline.py            # PyG 3-layer GraphCountGCN model + self-contained training CLI
 │   ├── graph_statistic_baseline.py# Density-based statistical baseline
 │   ├── dataset.py                 # PyTorch TopolensImageDataset & normalization
 │   ├── gradcam.py                 # Grad-CAM attention heatmap generator
 │   ├── train_cnn.py               # CNN training loop with checkpointing
-│   ├── train_gnn.py               # GCN baseline training loop
 │   └── checkpoints/               # Trained PyTorch model checkpoints (.pt)
 ├── evaluation/
 │   ├── evaluate.py                # Multi-model test & held-out evaluation runner
@@ -430,6 +433,10 @@ topolens/
 │   ├── failure_taxonomy.py        # Out-of-distribution & clutter failure classifier
 │   ├── shortcut_probe.py          # Node-size & layout intervention analyzer
 │   ├── ink_coverage_analysis.py   # Pixel coverage & connected component analysis
+│   ├── image_statistics.py        # Ink-fraction & connected-component pixel helpers
+│   ├── compute_structural_pixel_features.py # Structural + pixel feature merge for pixel-only baseline
+│   ├── interpretation.py          # Grad-CAM interpretation orchestration script
+│   ├── generate_dual_trigger_testcase.py    # Dual OOD-size + dense-clutter warning testcase generator
 │   └── results/                   # Computed evaluation CSV metrics & summaries
 ├── notebooks/                     # Exploratory analysis & visualization notebooks
 ├── report/
@@ -438,6 +445,8 @@ topolens/
 │   └── figures/                   # Generated figures, Grad-CAM grids, and plots
 ├── config.py                      # Central Python environment & path constants
 ├── config.yaml                    # Global YAML parameter configuration
+├── topolens_utils.py              # Shared deterministic path/seed/config helpers
+├── test_render.py                 # Rendering reproducibility/regression test
 ├── progress_log.md                # Narrative project development log
 ├── requirements.txt               # Pinned Python package dependencies
 ├── CONTRIBUTING.md                # Open-source contribution guidelines
@@ -457,17 +466,21 @@ topolens/
 ## 💡 Concluding Remarks, Acknowledgments & Future Directions
 
 ### Research Takeaway
+
 **Topolens** demonstrates that while graph-native message passing architectures (GNNs) remain the theoretical benchmark for structured topology, deep convolutional vision models can extract latent geometric invariants purely from 2D visual layouts. When properly calibrated against visual shortcuts (such as node scaling radii and pixel ink density), 2D visual topology regression provides a practical, non-invasive alternative for counting and analyzing graph structures from legacy diagrams, UI wireframes, and scanned scientific publications where raw adjacency data is unavailable.
 
 ### Future Research Directions
+
 - **Vision Transformers (ViT)**: Evaluating self-attention mechanisms (e.g., DINOv2 / ViT-B) to test patch-level scale invariance on complex graph renders.
 - **Multi-Layout Visual Ensembles**: Training vision backbones on multi-projection renders ($sfdp$ + $Kamada\text{-}Kawai$ + $Circo$) to eliminate layout-specific spatial bias.
 - **Joint Density-Scale Calibration**: Learning continuous joint embeddings of node size and clutter density to extend reliable counting beyond $|V| > 100$.
 
 ### Acknowledgments & Project Context
-Developed as an intensive 1-week empirical research investigation into visual graph learning. 
+
+Developed as an intensive 1-week empirical research investigation into visual graph learning.
 
 Special thanks to the open-source maintainers of:
+
 - **PyTorch & PyTorch Geometric** for neural network and graph learning primitives.
 - **NetworkX & Graphviz** for graph generation and $sfdp$ layout algorithms.
 - **Streamlit** for interactive model visualization and web application prototyping.
@@ -490,4 +503,3 @@ If you use **Topolens** in your research or project, please cite:
   url = {https://github.com/whozahm3d/topolens}
 }
 ```
-
