@@ -678,7 +678,7 @@ Part 4 analyses (Wilcoxon significance test, pixel-only ink-fraction
 baseline, warning-banner validation against `failure_case_categories.csv`) —
 then fold everything into `FINAL_REPORT.md`.
 
-## Day 9 — 20 Jul 2026 — Part 4: Statistical Significance, Warning-Banner Validation, Pixel-Only Baseline, Structural Correlations
+## Day 8 — 20 Jul 2026 — Part 4: Statistical Significance, Warning-Banner Validation, Pixel-Only Baseline, Structural Correlations
 
 ### Goal
 
@@ -788,7 +788,7 @@ out retraining, etc.) — explicitly deferred until this point in the plan;
 from `config.yaml`, the model/render scripts, and the still-unused
 evaluation figures — the actual write-up, not further analysis.
 
-# 2026-07-21 — External repo audit: six flagged issues reviewed and resolved
+## Day 9 — 21 Jul 2026 — External Repo Audit: Six Flagged Issues Reviewed and Resolved
 
 Reviewed six issues flagged by an external audit rather than accepting them
 at face value; verified each against actual repo/data state before fixing.
@@ -858,7 +858,7 @@ non-issues, one fixed with a scoped/lighter approach than proposed).
 
 ---
 
-## Day 11 — 21 Jul 2026 — Comprehensive Codebase Audit & System-Wide Bug Fixes
+## Day 10 — 21 Jul 2026 — Comprehensive Codebase Audit & System-Wide Bug Fixes
 
 ### Goal
 
