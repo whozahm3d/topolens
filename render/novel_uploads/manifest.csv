@@ -8,3 +8,7 @@ timestamp,content_hash,saved_filename,original_filename,source_type,pred_vertice
 2026-07-21T10:15:09.034486+00:00,acaea7cd476447f6,syn_barabasi_albert_large_0009.png,syn_barabasi_albert_large_0009.graphml,graph_upload,80.0,401.0,35.0,60.0,79.0,846.0,79.0,370.0
 2026-07-21T10:15:24.275557+00:00,94c7c5b0054913f6,syn_barabasi_albert_large_0033.png,syn_barabasi_albert_large_0033.graphml,graph_upload,53.0,59.0,29.0,33.0,74.0,741.0,74.0,73.0
 2026-07-21T11:13:39.424327+00:00,158dfd12739c1323,real_MUTAG_0007.png,real_MUTAG_0007.png,image_upload,15.0,14.0,,,,,16.0,17.0
+2026-07-21T15:45:42.716195+00:00,d46f5dbc0aac46ef,real_MUTAG_0040.png,real_MUTAG_0040.png,image_upload,12.0,12.0,,,,,13.0,14.0
+2026-07-21T15:47:23.066688+00:00,5d0722889264c4b4,syn_watts_strogatz_medium_0001.png,syn_watts_strogatz_medium_0001.graphml,graph_upload,42.0,42.0,28.0,54.0,49.0,323.0,49.0,49.0
+2026-07-21T15:59:14.500514+00:00,77efce03f50e81c5,syn_watts_strogatz_tiny_0001.png,syn_watts_strogatz_tiny_0001.graphml,graph_upload,7.0,4.0,8.0,11.0,6.0,4.0,6.0,6.0
+2026-07-21T16:00:09.377887+00:00,0cce6b74659b646a,real_MUTAG_0180.png,real_MUTAG_0180.graphml,graph_upload,25.0,31.0,12.0,29.0,28.0,104.0,28.0,33.0
