@@ -94,7 +94,7 @@ def metrics_records(model_name: str, split_name: str, df: pd.DataFrame, pred_cou
 
 
 def load_cnn_model(checkpoint_path: Path):
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     model = CustomCNNRegressor()
     model.load_state_dict(checkpoint["state_dict"])
     model.eval()
@@ -117,7 +117,7 @@ def predict_cnn(split_csv: Path, normalize_stats, model):
 
 
 def load_gnn_model(checkpoint_path: Path):
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     cfg = checkpoint["config"]
     model = GraphCountGCN(hidden_dim=int(cfg["model"]["baseline"]["hidden_dim"]), layers=int(cfg["model"]["baseline"]["layers"]))
     model.load_state_dict(checkpoint["state_dict"])
