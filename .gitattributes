@@ -3,3 +3,4 @@
 
 # Optional: also exclude notebook outputs/metadata from diffs in GitHub UI
 *.ipynb linguist-generated=true
+Makefile linguist-detectable=false
