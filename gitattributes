@@ -1,0 +1,5 @@
+# Prevent GitHub from counting Jupyter Notebooks in language stats
+*.ipynb linguist-vendored
+
+# Optional: also exclude notebook outputs/metadata from diffs in GitHub UI
+*.ipynb linguist-generated=true
