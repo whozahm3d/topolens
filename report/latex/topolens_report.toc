@@ -1,0 +1,41 @@
+\contentsline {chapter}{Abstract}{i}{chapter*.1}%
+\contentsline {chapter}{\numberline {1}Introduction \& Motivation}{1}{chapter.1}%
+\contentsline {chapter}{\numberline {2}Background \& Problem Statement}{3}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Problem Statement}{3}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Motivation: Personal Context}{3}{section.2.2}%
+\contentsline {chapter}{\numberline {3}Dataset Description}{5}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Synthetic Dataset Pool}{5}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Held-out Real-World Dataset}{6}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Split and Crosstabulation Statistics}{7}{section.3.3}%
+\contentsline {chapter}{\numberline {4}Rendering Pipeline}{11}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Model Architecture}{13}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Custom CNN Regressor (\texttt {CustomCNNRegressor})}{13}{section.5.1}%
+\contentsline {section}{\numberline {5.2}GCN Baseline (\texttt {GraphCountGCN})}{13}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Graph-Statistic Baseline}{14}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Log Target Transformation}{14}{section.5.4}%
+\contentsline {chapter}{\numberline {6}Training Setup}{15}{chapter.6}%
+\contentsline {chapter}{\numberline {7}Results}{16}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Baseline Comparison}{16}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Detailed Breakdown Reports}{16}{section.7.2}%
+\contentsline {chapter}{\numberline {8}Model Interpretation \& Failure Analysis}{19}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Grad-CAM Spatial Attributions}{19}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Shortcut-Learning Probe (Node-Size)}{22}{section.8.2}%
+\contentsline {section}{\numberline {8.3}Layout-Sensitivity Probe}{24}{section.8.3}%
+\contentsline {section}{\numberline {8.4}Wilcoxon Signed-Rank Tests}{24}{section.8.4}%
+\contentsline {section}{\numberline {8.5}Ink-Coverage Correlational Analysis}{25}{section.8.5}%
+\contentsline {section}{\numberline {8.6}Failure Taxonomy Analysis}{26}{section.8.6}%
+\contentsline {section}{\numberline {8.7}Structural Attribute Correlations}{28}{section.8.7}%
+\contentsline {section}{\numberline {8.8}Warning Banner Validation}{28}{section.8.8}%
+\contentsline {section}{\numberline {8.9}Live-App Validation Panel}{29}{section.8.9}%
+\contentsline {subsection}{\numberline {8.9.1}Part 1: Deployed App Spot Check}{29}{subsection.8.9.1}%
+\contentsline {subsection}{\numberline {8.9.2}Part 2: Novel-Image Sanity Check}{30}{subsection.8.9.2}%
+\contentsline {subsection}{\numberline {8.9.3}Part 3: Combinatorial Plausibility Violations}{30}{subsection.8.9.3}%
+\contentsline {chapter}{\numberline {9}Discussion}{31}{chapter.9}%
+\contentsline {section}{\numberline {9.1}On Competitiveness}{31}{section.9.1}%
+\contentsline {section}{\numberline {9.2}On Mechanism}{31}{section.9.2}%
+\contentsline {section}{\numberline {9.3}On the Fairness of the Comparison}{32}{section.9.3}%
+\contentsline {chapter}{\numberline {10}Limitations}{33}{chapter.10}%
+\contentsline {chapter}{\numberline {11}Future Work}{36}{chapter.11}%
+\contentsline {chapter}{\numberline {12}Conclusion}{37}{chapter.12}%
+\contentsline {chapter}{\numberline {13}References}{38}{chapter.13}%
+\contentsline {chapter}{Appendix}{40}{chapter*.32}%

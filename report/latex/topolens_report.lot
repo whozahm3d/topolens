@@ -1,0 +1,28 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Train Split Sample Counts by Generator and Tier ($n=1,750$)}}{9}{table.caption.8}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Validation Split Sample Counts by Generator and Tier ($n=375$)}}{9}{table.caption.9}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Test Split Sample Counts by Generator and Tier ($n=375$)}}{9}{table.caption.10}%
+\contentsline {table}{\numberline {3.4}{\ignorespaces Held-out (Real-world) Split Sample Counts by Source and Tier ($n=1,301$)}}{10}{table.caption.11}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {7.1}{\ignorespaces Baseline Comparison Metrics on Test and Held-out Splits}}{16}{table.caption.13}%
+\contentsline {table}{\numberline {7.2}{\ignorespaces Detailed MAE by Generator Type on the Test Split}}{17}{table.caption.16}%
+\contentsline {table}{\numberline {7.3}{\ignorespaces Detailed MAE by Dataset on the Held-out Split}}{18}{table.caption.17}%
+\contentsline {table}{\numberline {7.4}{\ignorespaces Detailed MAE by Density Bucket on the Held-out Split}}{18}{table.caption.18}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {8.1}{\ignorespaces Probe Summary MAE by Variant and Size Tier}}{24}{table.caption.23}%
+\contentsline {table}{\numberline {8.2}{\ignorespaces Wilcoxon Signed-Rank Test Results for Node-Size and Layout Probes ($n=40$)}}{25}{table.caption.24}%
+\contentsline {table}{\numberline {8.3}{\ignorespaces Pearson Correlations ($r$) for Low-Level Pixel Statistics vs. True and Predicted Graph Properties}}{25}{table.caption.26}%
+\contentsline {table}{\numberline {8.4}{\ignorespaces Failure Taxonomy Error Analysis (CNN Regressor)}}{28}{table.caption.29}%
+\contentsline {table}{\numberline {8.5}{\ignorespaces Warning Banner Size-Binned Error Validation}}{29}{table.caption.30}%
+\contentsline {table}{\numberline {8.6}{\ignorespaces Predict Deployed App Spot Check Results ($n=23$)}}{29}{table.8.6}%
+\contentsline {table}{\numberline {8.7}{\ignorespaces Predict App Novel-Image Sanity Check Results}}{30}{table.caption.31}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

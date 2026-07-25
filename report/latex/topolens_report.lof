@@ -1,0 +1,26 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Distribution of graph counts across the synthetic size tiers.}}{6}{figure.caption.5}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Overall node and edge count distributions across the dataset.}}{7}{figure.caption.6}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Node and edge distributions broken down by generator family.}}{8}{figure.caption.7}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Sample rendered images from the dataset showcasing different topologies.}}{12}{figure.caption.12}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {7.1}{\ignorespaces Scatter plots of predictions vs. ground truth on synthetic test data.}}{17}{figure.caption.14}%
+\contentsline {figure}{\numberline {7.2}{\ignorespaces Scatter plots of predictions vs. ground truth on real held-out data.}}{17}{figure.caption.15}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {8.1}{\ignorespaces Grad-CAM activations mapped across representatives of each generator family.}}{20}{figure.caption.19}%
+\contentsline {figure}{\numberline {8.2}{\ignorespaces Grad-CAM activations on high-error failure cases.}}{21}{figure.caption.20}%
+\contentsline {figure}{\numberline {8.3}{\ignorespaces Side-by-side comparison of original, constant node-size, and alternative layouts.}}{23}{figure.caption.21}%
+\contentsline {figure}{\numberline {8.4}{\ignorespaces Error comparison (MAE) across the different probe variants.}}{24}{figure.caption.22}%
+\contentsline {figure}{\numberline {8.5}{\ignorespaces Correlations between visual pixel properties and actual node counts.}}{25}{figure.caption.25}%
+\contentsline {figure}{\numberline {8.6}{\ignorespaces Plotting prediction error against physical graph size and structural density.}}{26}{figure.caption.27}%
+\contentsline {figure}{\numberline {8.7}{\ignorespaces Grid of worst-performing outlier images yielding highest regression errors.}}{27}{figure.caption.28}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
