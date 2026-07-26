@@ -559,6 +559,32 @@ y_{\text{train}} = \log(y_{\text{true}} + 1)
 \end{equation*}
 This transformation matters because the raw target distribution is extremely right-skewed: edge counts in the training data range from 5 up to 1,049, so a model trained directly on raw counts would be dominated by loss contributions from the handful of large, dense graphs, at the expense of learning to distinguish, say, a 6-node graph from an 8-node one. The log transform compresses that dynamic range so gradient magnitudes stay comparable across small and large graphs alike. At inference, predictions are back-transformed via $\exp(y_{\text{pred}}) - 1$, rounded to the nearest integer, and clamped at 0 (since a negative vertex or edge count is not meaningful).
 
+\subsection{Model Cards}
+\label{sec:modelcards}
+Table~\ref{tab:modelcard} summarizes both models in a single, scannable reference, in the spirit of standard model-reporting practice. Parameter counts are analytically derived from the layer-by-layer architecture described above (not measured from a saved checkpoint) and are reported as approximate, rounded figures rather than exact values.
+
+\begin{table}[htbp]
+\centering
+\caption{Model Cards: CNN Regressor vs. GCN Baseline}
+\label{tab:modelcard}
+\small
+\begin{tabular}{p{2.4cm}p{5.4cm}p{5.4cm}}
+\toprule
+Field & CNN Regressor (\texttt{CustomCNNRegressor}) & GCN Baseline (\texttt{GraphCountGCN}) \\
+\midrule
+Architecture & 4 conv blocks (Conv--BN--ReLU--MaxPool), $3\to32\to64\to128\to256$ channels, global average pool, FC head & 3 \texttt{GCNConv} layers with BN--ReLU, $1\to64\to64\to64$ channels, global mean pool, FC head \\
+Parameters (approx.) & $\sim$423K & $\sim$17K \\
+Input & $224\times224$ RGB rendered graph image & Graph with 1-dimensional normalized-degree node feature \\
+Output & $[\hat{V}, \hat{E}]$ (vertex count, edge count) & $[\hat{V}, \hat{E}]$ (vertex count, edge count) \\
+Training data & 1,750 synthetic training graphs (Section~\ref{sec:dataset}), rendered images only & Same 1,750 graphs, used as raw topology (no rendering) \\
+Training regime & Adam, lr $=10^{-3}$, 30 epochs, batch size 32, log-MSE loss (Section~\ref{sec:training}) & Identical optimizer, schedule, and loss as the CNN \\
+Intended use & Estimating vertex/edge counts from images of graphs rendered in a similar style (Graphviz \texttt{sfdp}, $\le$100 nodes) & Estimating vertex/edge counts from raw topology when it is directly available \\
+Out-of-scope use & Graphs rendered in unfamiliar styles, graphs exceeding $\sim$100 nodes, or non-graph images (Section~\ref{sec:limitations}) & Any setting requiring richer structural reasoning than a single degree feature can support \\
+Primary known limitation & Accuracy is partly attributable to a node-size rendering confound (Section~\ref{ch:interpretation}), not pure topological understanding & Deliberately minimal feature budget likely understates what GNNs can achieve on this task (Section~\ref{sec:limitations}) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 % ----------------------------------------------------------------------
 % SECTION 6: TRAINING SETUP
 % ----------------------------------------------------------------------
@@ -1078,6 +1104,19 @@ Returning to the two questions posed in the Introduction: on Competitiveness, th
 Thus, visual topology regression presents a double-edged sword: layouts provide spatial organizations that aid predictions, but networks readily overfit to arbitrary visualization standards. This has a direct practical implication for anyone considering a similar visual-inference pipeline: rendering conventions are not a neutral implementation detail to be decided late in a project, but a variable that materially shapes what the model actually learns, and should be scrutinized with the same rigor as the model architecture itself. Future research building on this project must focus on two fronts in tandem---visual standardization (or explicit augmentation against it) to reduce the model's dependence on any single rendering convention, and OOD size-generalization, since the 100-node ceiling proved to be the single largest source of catastrophic error observed across every evaluation in this report.
 
 % ----------------------------------------------------------------------
+% SECTION: BROADER IMPACT AND ETHICS STATEMENT
+% ----------------------------------------------------------------------
+\section{Broader Impact and Ethics Statement}
+\label{sec:broaderimpact}
+\textbf{Data and privacy.} All data used in this project is either synthetically generated (the 2,500 NetworkX graphs) or drawn from long-established, publicly available, non-personal benchmark datasets (MUTAG, a set of chemical compound structures; PROTEINS, a set of protein contact-map topologies)~[\ref{ref:tudataset}]. No personal, sensitive, or human-subject data is involved anywhere in this pipeline.
+
+\textbf{Potential applications and misuse.} The intended positive use case is narrow and low-risk: recovering approximate structural statistics from rendered diagrams where the underlying graph-native data is unavailable, e.g.\ digitizing legacy engineering schematics or making scanned diagrams more accessible to automated tooling. Because the task is a bounded counting/regression problem rather than a generative or decision-making one, the realistic misuse surface is small; the authors are not aware of a plausible harmful application specific to this model that would not apply equally to any general-purpose CNN.
+
+\textbf{Risk of overtrust in image-based structural inference.} The more concrete ethical consideration this project surfaces is methodological rather than domain-specific: Section~\ref{ch:interpretation} demonstrates that a visual model can achieve strong accuracy for reasons other than the one a practitioner might assume (topological understanding), driven instead by an incidental rendering confound. This is offered as a worked example of why an interpretability audit---not just a held-out accuracy number---should be considered a prerequisite before deploying an image-based estimator in any setting where the failure mode matters, and is a large part of the motivation for treating Section~\ref{ch:interpretation} as a co-equal deliverable alongside the headline results (Section~\ref{sec:introduction}).
+
+\textbf{Compute and environmental cost.} Both models are small (Table~\ref{tab:modelcard}) and were trained for 30 epochs on a single Colab T4 GPU in well under an hour each; the environmental and compute cost of this project is minimal relative to typical deep learning research.
+
+% ----------------------------------------------------------------------
 % SECTION: REPRODUCIBILITY STATEMENT
 % ----------------------------------------------------------------------
 \section{Reproducibility Statement}
@@ -1117,6 +1156,13 @@ Reproducibility was treated as a design constraint throughout this project rathe
     \end{verbatim}
 \end{enumerate}
 All scripts use deterministic random seed initialization from \texttt{config.py} and \texttt{config.yaml} (seed = 42).
+
+% ----------------------------------------------------------------------
+% SECTION: ACKNOWLEDGMENTS
+% ----------------------------------------------------------------------
+\section*{Acknowledgments}
+\addcontentsline{toc}{section}{Acknowledgments}
+The author thanks Dr. Muhammad Aasim Qureshi for supervising this project and for defining its scope within the Deep Learning internship at FAST NUCES Lahore. Model training was carried out on Google Colab using a single T4 GPU, provided as part of Colab's free tier; no other external funding or compute resources were used in this project.
 
 % ----------------------------------------------------------------------
 % SECTION: REFERENCES
