@@ -409,8 +409,11 @@ topolens/
 ├── data/
 │   ├── raw/                       # Raw GraphML synthetic & real graph files
 │   ├── images/                    # Rendered 224x224 graph images
-│   ├── processed/                 # Dataset manifests & labels (labels_processed.csv)
+│   ├── images_probe/              # Rendered probe variants (constant node size, alt layouts)
+│   ├── novel_images/              # Raw user-uploaded/scanned/handwritten test images (handwritten_graph_*.jpeg)
+│   ├── processed/                 # Dataset manifests & labels (labels_processed.csv, probe_manifest.csv)
 │   ├── splits/                    # Train, val, test, and held-out CSV splits
+│   ├── gephi_demo/                # Curated diverse graphs exported for manual rendering in Gephi
 │   ├── generate_synthetic.py      # NetworkX synthetic graph generator
 │   ├── load_tu_datasets.py        # PyG MUTAG / PROTEINS dataset importer
 │   ├── make_splits.py             # Stratified dataset split script
@@ -438,11 +441,40 @@ topolens/
 │   ├── interpretation.py          # Grad-CAM interpretation orchestration script
 │   ├── generate_dual_trigger_testcase.py    # Dual OOD-size + dense-clutter warning testcase generator
 │   └── results/                   # Computed evaluation CSV metrics & summaries
+│       ├── baseline_predictions.csv     # Predictions from the heuristic baseline
+│       ├── cnn_metrics.csv              # Error metrics computed for the CNN
+│       ├── cnn_training_log.csv         # Train and validation loss log for the CNN
+│       ├── cnn_worst_edge_errors.csv    # List of worst edge errors for the CNN
+│       ├── failure_case_categories.csv  # Full categorical failure cases classifications
+│       ├── failure_case_summary.csv     # Failure case category metrics summary
+│       ├── gnn_metrics.csv              # Error metrics computed for the GNN
+│       ├── gnn_training_log.csv         # Train and validation loss log for the GNN
+│       ├── graph_statistic_metrics.csv  # Error metrics computed for the heuristic
+│       ├── ink_coverage_correlations.csv # Correlation coefficients for ink/pixel metrics
+│       ├── probe_predictions.csv        # Variant predictions for the shortcut/layout probes
+│       ├── probe_summary.csv            # Summary metrics across the probe variants
+│       ├── structural_pixel_features.csv # Structural and pixel features computed per graph
+│       ├── summary_comparison.csv       # Side-by-side metrics comparisons across models
+│       ├── topolens_free_analyses_results.csv # Metrics for Wilcoxon and warning validation tests
+│       ├── topolens_novelimage_results.csv # Predictions on user-uploaded/novel images
+│       ├── topolens_novelimage_results.docx # Word document summary of novel image predictions
+│       ├── topolens_pixel_structural_correlations.csv # Correlations between structural attributes and errors
+│       ├── topolens_spotcheck_results.csv # Predictions on live spotcheck graphs
+│       └── topolens_spotcheck_results.docx # Word document summary of spotcheck predictions
 ├── notebooks/                     # Exploratory analysis & visualization notebooks
 ├── report/
 │   ├── FINAL_REPORT.md            # Comprehensive research report & submission
 │   ├── log.md                     # Technical execution log
-│   └── figures/                   # Generated figures, Grad-CAM grids, and plots
+│   ├── figures/                   # Generated figures, Grad-CAM grids, and plots
+│   └── latex/                     # LaTeX report sources and compiled outputs
+│       ├── topolens_report.tex    # LaTeX source document for the research report
+│       ├── topolens_report.pdf    # Compiled PDF of the final research report
+│       ├── topolens_report.aux    # Auxiliary file containing references/labels
+│       ├── topolens_report.log    # LaTeX engine compilation log
+│       ├── topolens_report.out    # Bookmarks/hyperlinks metadata
+│       ├── topolens_report.toc    # Table of contents auxiliary file
+│       ├── topolens_report.lof    # List of figures auxiliary file
+│       └── topolens_report.lot    # List of tables auxiliary file
 ├── config.py                      # Central Python environment & path constants
 ├── config.yaml                    # Global YAML parameter configuration
 ├── topolens_utils.py              # Shared deterministic path/seed/config helpers
