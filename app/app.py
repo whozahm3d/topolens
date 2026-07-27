@@ -251,21 +251,65 @@ def parse_graph_file(uploaded_file) -> "nx.Graph":  # type: ignore[name-defined]
             tmp_path = tmp.name
         try:
             G = nx.read_graphml(tmp_path)
+        except Exception as exc:
+            raise ValueError(
+                f"Could not parse this as a GraphML file — make sure it's a "
+                f"valid .graphml export. Details: {exc}"
+            ) from exc
         finally:
             os.unlink(tmp_path)
+        if G.number_of_nodes() == 0:
+            raise ValueError("The uploaded GraphML file contains no nodes.")
         return G
 
     if suffix in (".csv", ".txt"):
         sep = "," if suffix == ".csv" else r"\s+"
-        lines = raw_bytes.decode("utf-8", errors="replace")
-        import io as _io
-        df_edges = pd.read_csv(_io.StringIO(lines), sep=sep, header=None, engine="python")
+        try:
+            text = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError(
+                "Could not read this file as text. Expected a plain CSV/TXT "
+                "edge list with one 'source,target' pair per line."
+            ) from exc
+
+        try:
+            df_edges = pd.read_csv(io.StringIO(text), sep=sep, header=None, engine="python")
+        except Exception as exc:
+            raise ValueError(
+                f"Could not parse this as a two-column edge list (one "
+                f"'source,target' pair per line). Details: {exc}"
+            ) from exc
+
+        if df_edges.shape[1] < 2:
+            raise ValueError(
+                f"Expected two columns per line (source, target) but found "
+                f"{df_edges.shape[1]}. Check the file's delimiter and format."
+            )
+
+        # Drop an optional header row, e.g. "source,target" / "from,to"
+        header_keywords = {"source", "target", "from", "to", "node1", "node2", "src", "dst"}
+        first_row_values = {str(v).strip().lower() for v in df_edges.iloc[0, :2].tolist()}
+        if first_row_values & header_keywords:
+            df_edges = df_edges.iloc[1:]
+
         G = nx.Graph()
         for row in df_edges.itertuples(index=False):
-            G.add_edge(str(row[0]), str(row[1]))
+            u, v = row[0], row[1]
+            if pd.isna(u) or pd.isna(v):
+                continue
+            G.add_edge(str(u).strip(), str(v).strip())
+
+        if G.number_of_nodes() == 0:
+            raise ValueError(
+                "No valid edges were found in this file. Expected one "
+                "'source,target' pair per line."
+            )
         return G
 
-    raise ValueError(f"Unsupported file type: {suffix!r}")
+    raise ValueError(
+        f"Unsupported file type: {suffix!r}. Upload a .graphml, .csv, or .txt "
+        f"edge list, or a .png/.jpg/.jpeg image instead."
+    )
 
 
 def render_graph_to_pil(G: "nx.Graph") -> Image.Image:  # type: ignore[name-defined]
