@@ -21,16 +21,22 @@ dataset:
       erdos_renyi:
         count: 500
         params:
-          p: [0.05, 0.1, 0.2, 0.3]
+          # p sampled continuously via rng.uniform(0.05, 0.3).
+          # This field is documentation only — see data/generate_synthetic.py.
+          p_range: [0.05, 0.3]
       barabasi_albert:
         count: 500
         params:
-          m: [1, 2, 3, 5]
+          # m sampled via rng.randint(1, min(5, n-1)) — capped by node count
+          # for small n. This field is documentation only.
+          m_range: [1, 5]
       watts_strogatz:
         count: 500
         params:
-          k: [4, 6]
-          p: [0.1, 0.3]
+          # k sampled from even values up to min(6, n-1); p sampled via
+          # rng.uniform(0.05, 0.3). This field is documentation only.
+          k_range: [2, 6]
+          p_range: [0.05, 0.3]
       random_tree:
         count: 500
         params: {}
@@ -38,7 +44,9 @@ dataset:
         count: 500
         node_range: [5, 100]
         params:
-          p: [0.6, 0.8, 0.95]
+          # p sampled continuously via rng.uniform(0.4, 0.7).
+          # This field is documentation only — see data/generate_synthetic.py.
+          p_range: [0.4, 0.7]
 
   split:
     train: 0.70
