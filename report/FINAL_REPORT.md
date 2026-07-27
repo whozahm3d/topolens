@@ -42,15 +42,37 @@ the report:
    node size, layout geometry, ink density — that happen to correlate with
    the labels but would not survive a change in rendering convention?
 
-Section 3–4 answer (1) quantitatively. Section 5 answers (2) through Grad-CAM,
-targeted shortcut probes, and correlational analysis. Section 6 synthesizes
+Section 4–5 answer (1) quantitatively. Section 6 answers (2) through Grad-CAM,
+targeted shortcut probes, and correlational analysis. Section 7 synthesizes
 both into a single answer to the framing question above.
 
 ---
 
-## 2. Methodology
+## 2. Related Work
 
-### 2.1 Dataset
+This section situates Topolens relative to three adjacent bodies of work: graph-native representation learning, graph drawing and visualization, and the study of shortcut learning in deep networks. None of these three areas directly addresses the specific question this report asks — estimating structural graph properties from a rendered image via an ordinary CNN — and that gap is itself part of the motivation described in Section 1.
+
+### 2.1 Graph-Native Representation Learning
+
+The dominant paradigm for learning from graph-structured data is message passing, in which a Graph Neural Network iteratively aggregates information from each node's neighborhood [1]. This report's GCN baseline (Section 3.3) is a direct, minimal instance of this paradigm, implemented via PyTorch Geometric [2]. Because GNNs operate on the graph itself rather than on any rendering of it, they are the natural benchmark against which a purely visual estimator should be measured, and the entire competitiveness question posed in Section 1 is framed as a comparison against this paradigm rather than against other visual baselines.
+
+### 2.2 Graph Drawing and Visual Graph Representations
+
+Separately, the graph drawing literature has long studied how to lay out a graph's nodes and edges in 2D space for human readability, with force-directed placement — in which nodes repel each other while edges act as springs — as one of the most widely used families of approach [3]. Graphviz's `sfdp` engine [4], used throughout this report's rendering pipeline (Section 3.2), is a scalable implementation of this family. This literature is concerned with producing layouts that are readable to *humans*; it does not ask whether a trained visual model can recover structural statistics from the resulting image, which is the question this report investigates instead.
+
+### 2.3 Shortcut Learning and Interpretability
+
+Deep networks are well documented to sometimes solve a task by exploiting incidental statistical regularities in the training data rather than the intended underlying signal, a phenomenon broadly termed shortcut learning [5]. The node-size rendering confound identified in Section 6 is a concrete instance of this general phenomenon, specific to the graph-rendering setting: because node radius is a deterministic function of vertex count in this pipeline (Section 3.2), it constitutes exactly the kind of spurious-but-predictive cue that shortcut learning describes. This report's use of Grad-CAM [6] and targeted causal ablation, rather than accuracy numbers alone, follows directly from taking that risk seriously rather than assuming it away.
+
+### 2.4 Positioning of This Work
+
+To the best of the author's knowledge, no prior work directly studies the specific setting examined here: training an ordinary CNN to regress structural graph statistics (vertex and edge counts) from a rendered image, benchmarked jointly against a graph-native GNN baseline and audited for rendering-specific shortcuts. This report should therefore be read as a controlled, exploratory case study bridging the three areas above, rather than as an incremental improvement on an established benchmark within any one of them.
+
+---
+
+## 3. Methodology
+
+### 3.1 Dataset
 
 **Synthetic (primary, used for training/validation/testing).** 2,500 graphs
 generated via NetworkX, stratified across 5 generator families —
@@ -78,9 +100,9 @@ case). Combined held-out set: 1,301 graphs, **never used in training or
 model selection**. Notably, 67 of the PROTEINS graphs exceed the 100-node
 training ceiling (up to 620 nodes) — this is a deliberate, not incidental,
 out-of-distribution generalization test and is treated as such throughout
-Section 5.
+Section 6.
 
-### 2.2 Rendering Pipeline
+### 3.2 Rendering Pipeline
 
 Each graph is rendered to a 224×224 px PNG at 100 DPI via a three-stage
 fallback chain: `pygraphviz`'s `sfdp` layout → `pydot`'s `sfdp` layout (if
@@ -100,11 +122,11 @@ thin fixed-width edges (width 0.6), and node radius scaled as
 `max(15, 4000 / n)` — i.e. nodes shrink as graphs grow. This formula was
 flagged as a potential shortcut-learning confound at design time (a model
 could learn to infer node count from apparent node size rather than counting
-node "blobs"); Section 5.2 and 5.6 confirm this concern was justified. A
+node "blobs"); Section 6.2 and 6.6 confirm this concern was justified. A
 small set of ~26 additional images was rendered manually in Gephi for
 qualitative visual comparison only — not used in training or evaluation.
 
-### 2.3 Model Architecture
+### 3.3 Model Architecture
 
 **CNN (`CustomCNNRegressor`).** Four convolutional blocks (3×3 conv → batch
 norm → ReLU → 2×2 max-pool), channel progression 3→32→64→128→256, followed
@@ -120,7 +142,7 @@ training across the wide dynamic range of counts (5 to 1,049 edges).
 single input node feature is **degree normalized by the graph's maximum
 degree** — no richer structural encodings (clustering coefficient, spectral
 features, positional encodings) are provided. This is a real design choice
-with consequences discussed in Section 6. Mean pooling was substituted for
+with consequences discussed in Section 7. Mean pooling was substituted for
 an earlier sum-pooling implementation after a Day 4 bug: sum-pooling
 entangled the pooled representation with node count in a way that degraded
 catastrophically on differently-sized held-out graphs (thousands-scale MAE
@@ -132,7 +154,23 @@ non-comparable and included only so the edge-count heuristic has a place to
 live. Edge count is estimated as `mean_density_per_generator × n(n−1)/2`,
 where per-generator mean density is fit exclusively on the training split.
 
-### 2.4 Training Setup
+### 3.4 Model Cards
+
+The table below summarizes both models in a single, scannable reference, in the spirit of standard model-reporting practice. Parameter counts are analytically derived from the layer-by-layer architecture described above (not measured from a saved checkpoint) and are reported as approximate, rounded figures rather than exact values.
+
+| Field | CNN Regressor (`CustomCNNRegressor`) | GCN Baseline (`GraphCountGCN`) |
+|---|---|---|
+| Architecture | 4 conv blocks (Conv–BN–ReLU–MaxPool), 3→32→64→128→256 channels, global average pool, FC head | 3 `GCNConv` layers with BN–ReLU, 1→64→64→64 channels, global mean pool, FC head |
+| Parameters (approx.) | ~423K | ~17K |
+| Input | 224×224 RGB rendered graph image | Graph with 1-dimensional normalized-degree node feature |
+| Output | [V̂, Ê] (vertex count, edge count) | [V̂, Ê] (vertex count, edge count) |
+| Training data | 1,750 synthetic training graphs (Section 3.1), rendered images only | Same 1,750 graphs, used as raw topology (no rendering) |
+| Training regime | Adam, lr = 10⁻³, 30 epochs, batch size 32, log-MSE loss (Section 3.5) | Identical optimizer, schedule, and loss as the CNN |
+| Intended use | Estimating vertex/edge counts from images of graphs rendered in a similar style (Graphviz `sfdp`, ≤100 nodes) | Estimating vertex/edge counts from raw topology when it is directly available |
+| Out-of-scope use | Graphs rendered in unfamiliar styles, graphs exceeding ~100 nodes, or non-graph images (Section 8) | Any setting requiring richer structural reasoning than a single degree feature can support |
+| Primary known limitation | Accuracy is partly attributable to a node-size rendering confound (Section 6), not pure topological understanding | Deliberately minimal feature budget likely understates what GNNs can achieve on this task (Section 8) |
+
+### 3.5 Training Setup
 
 Both models trained for 30 epochs, Adam optimizer, MSE loss on `log1p`
 targets, batch size 32, learning rate 0.001 (`config.yaml`), fixed seed 42
@@ -143,11 +181,11 @@ on Day 4. Best-validation-loss checkpoints are saved to
 One full retrain was later run to isolate GPU/cuDNN non-determinism between
 runs — this shifted the test-split overall vertex MAE from 4.5 to 3.2
 between two otherwise-identical runs, noted as a reproducibility caveat in
-Section 7.
+Section 8.
 
 ---
 
-## 3. Baseline Comparison
+## 4. Baseline Comparison
 
 > **Note:** The graph-statistic baseline's 0.00 vertex MAE is structurally
 > trivial — it returns the true node count directly rather than estimating
@@ -178,12 +216,12 @@ the synthetic test split, and by 2x on the real held-out split. It also beats
 the density-based graph-statistic heuristic on edge count in the aggregate,
 despite that heuristic having direct access to true density statistics fit
 on the training data. This is the headline quantitative result motivating
-Section 5's interpretation work: a result this decisive demands scrutiny of
+Section 6's interpretation work: a result this decisive demands scrutiny of
 *why*, not just acceptance of the number.
 
 ---
 
-## 4. Quantitative Results
+## 5. Quantitative Results
 
 **By generator type (test split, MAE):**
 
@@ -223,10 +261,10 @@ homogeneous; PROTEINS spans 4–620 nodes).
 | sparse | 18.75 | 32.13 | 49.11 | 61.90 | 683.54 |
 
 This is a counter-intuitive but consistent finding, confirmed again at full
-scale in Section 5.6: **dense graphs are the easiest bucket for the CNN, not
+scale in Section 6.6: **dense graphs are the easiest bucket for the CNN, not
 the hardest**, and sparse graphs are by far the worst (18.75 vertex MAE, 49.11
 edge MAE — an order of magnitude above the dense bucket). This directly
-foreshadows Section 5.5's failure taxonomy, where out-of-distribution *size*
+foreshadows Section 6.5's failure taxonomy, where out-of-distribution *size*
 turns out to be the dominant failure mode, not visual clutter or density as
 originally hypothesized at design time. Per-graph scatter plots
 (`report/figures/cnn_pred_num_vertices_scatter_*.png`,
@@ -236,9 +274,9 @@ error grows with node count far more sharply than with density.
 
 ---
 
-## 5. Model Interpretation & Failure Analysis
+## 6. Model Interpretation & Failure Analysis
 
-### 5.1 Grad-CAM: What Does the Model Look At?
+### 6.1 Grad-CAM: What Does the Model Look At?
 
 Grad-CAM is computed at `features[3]`, the CNN's final (256-channel)
 convolutional block, with two independent backward passes per image — one
@@ -268,17 +306,17 @@ graphs, activation frequently concentrates on a single densely-packed
 sub-region rather than spreading across the graph's full spatial extent.
 This is consistent with two findings elsewhere in this report rather than
 an independent discovery: it's compatible with the out-of-distribution-size
-failure mode (Section 5.5), where a model trained on smaller, less
+failure mode (Section 6.5), where a model trained on smaller, less
 spatially extensive graphs may not have learned to attend across a large
-image's full area, and with the node-size shortcut (Section 5.2), where
+image's full area, and with the node-size shortcut (Section 6.2), where
 attention gravitating toward node-blob regions is exactly the mechanism a
 model exploiting apparent node size would be expected to show. Individual
 per-image overlays are in `report/figures/gradcam/` for closer inspection
 of specific cases.
 
-### 5.2 Shortcut-Learning Probe (Node-Size Confound)
+### 6.2 Shortcut-Learning Probe (Node-Size Confound)
 
-The renderer scales node radius as `max(15, 4000/n)` (Section 2.2), flagged
+The renderer scales node radius as `max(15, 4000/n)` (Section 3.2), flagged
 at design time as a possible shortcut: a model could infer vertex count from
 node *size* rather than from counting distinct nodes. To test this directly,
 the same 40 probe graphs (10 per tier) were re-rendered with node radius
@@ -298,32 +336,32 @@ Overall vertex MAE roughly triples under constant node size (3.43 → 10.48),
 the single largest effect size of any probe in this report, and the effect
 holds in every tier without exception. Its *relative* magnitude, however, is
 not driven by absolute graph size the way the OOD-size failure mode is
-(Section 5.5): the small tier shows the largest multiplicative jump (1.0 →
+(Section 6.5): the small tier shows the largest multiplicative jump (1.0 →
 8.5, 8.5×) while the large tier shows the smallest (8.9 → 16.7, 1.9×) despite
 having the largest absolute error under both conditions. This is consistent
 with node size being a comparatively strong, easily-exploited cue in
 low-to-mid-range graphs, where individual node blobs are still visually
 distinguishable, and a comparatively weaker one in large/dense graphs, where
 node blobs already overlap and the model likely leans on other pixel-level
-cues such as ink coverage (Section 5.4) instead.
+cues such as ink coverage (Section 6.4) instead.
 
 Overall edge MAE appears to *decrease* under constant node size (54.18 →
 39.80), which read in isolation would suggest the shortcut actively helps
-edge estimation. Section 5.6 (Part 4, item 1) shows this reading is an
+edge estimation. Section 6.6 (Part 4, item 1) shows this reading is an
 artifact: two dense/large outlier graphs dominate the mean, while the median
 (3.5 → 20.0 with node size held constant) and a Wilcoxon signed-rank test
 (p ≈ 0.0003) both confirm edge accuracy degrades for the large majority of
 probe graphs (35 of 40) under the same intervention — the same statistical
 correction applied to the vertex-MAE tripling (Wilcoxon p ≈ 3.6×10⁻⁶).
 Taken together, this probe is the single strongest piece of evidence in the
-report that part of the CNN's headline accuracy (Section 3) comes from a
+report that part of the CNN's headline accuracy (Section 4) comes from a
 rendering convention rather than pure topological inference. It is the
-finding that most directly qualifies the Section 3 result and motivates
-both the Discussion (Section 6) and the Limitations (Section 7).
+finding that most directly qualifies the Section 4 result and motivates
+both the Discussion (Section 7) and the Limitations (Section 8).
 
-### 5.3 Layout-Sensitivity Probe
+### 6.3 Layout-Sensitivity Probe
 
-The same 40 probe graphs (10 per tier) used in Section 5.2 were re-rendered
+The same 40 probe graphs (10 per tier) used in Section 6.2 were re-rendered
 with NetworkX's Kamada-Kawai layout in place of Graphviz `sfdp` — same node
 size, same edge style, only the node *positions* change — to test whether
 the model has overfit to `sfdp`'s specific spatial conventions.
@@ -339,7 +377,7 @@ the model has overfit to `sfdp`'s specific spatial conventions.
 Vertex accuracy is essentially flat across the layout change at every tier.
 The overall edge MAE appears to *improve* under `alt_layout` (54.18 →
 35.53), but per-graph inspection shows this is the same kind of mean
-distortion flagged in Section 5.6: the median edge error is actually
+distortion flagged in Section 6.6: the median edge error is actually
 slightly *worse* under Kamada-Kawai (3.5 → 4.5), and only 22 of 40 graphs
 improve — the aggregate mean is dominated by one graph,
 `syn_dense_large_0069` (the same graph already flagged as the worst Day-7
@@ -348,20 +386,20 @@ spot-check and shortcut-probe failure), whose edge error dropped by 512
 that improved substantially (−90, −74); several small/medium graphs got
 moderately worse (+17, +14, +12) in the same swap. This is formalized as a
 null result in the Wilcoxon signed-rank test already reported in Section
-5.6, Part 4, item 1 (p=0.499 vertex, p=0.898 edge) — the layout swap
+6.6, Part 4, item 1 (p=0.499 vertex, p=0.898 edge) — the layout swap
 produces no statistically significant change in either direction, in
-contrast to the node-size swap (Section 5.2), which does.
+contrast to the node-size swap (Section 6.2), which does.
 
-Taken together with Section 5.2, this is a useful contrast: the model *is*
+Taken together with Section 6.2, this is a useful contrast: the model *is*
 measurably reliant on the node-size rendering convention, but is *not*
 measurably reliant on `sfdp`'s specific node-placement geometry — at least
 against this one alternative layout algorithm. This should not be read as
-general layout robustness (Section 7 notes the test covers only one
+general layout robustness (Section 8 notes the test covers only one
 alternative, Kamada-Kawai, out of many layout families with meaningfully
 different visual conventions), but within that scope, the model's accuracy
 does not appear contingent on `sfdp` specifically.
 
-### 5.4 Ink-Coverage Correlational Analysis
+### 6.4 Ink-Coverage Correlational Analysis
 
 Two low-level pixel statistics — `ink_fraction` (share of non-background
 pixels) and `mean_component_area` (average size of connected dark-pixel
@@ -411,24 +449,24 @@ simply do not follow the synthetic generators' size-vs-connectivity pattern,
 confirming the synthetic and real distributions differ structurally and not
 only in scale.
 
-**Pixel-only baseline (Section 5.6, Part 4, item 3).** A directly-fit linear
+**Pixel-only baseline (Section 6.6, Part 4, item 3).** A directly-fit linear
 regression of `ink_fraction → num_edges` explains 82% of edge-count variance
 on synthetic test data (r=0.905, R²=0.819) but is essentially uninformative
 on real-world held-out data (r=0.059, R²=0.004) — the same qualitative
 pattern as the raw correlations above, and the clearer piece of evidence that
-the CNN's real-world accuracy is not simple pixel-counting (see Section 5.6
+the CNN's real-world accuracy is not simple pixel-counting (see Section 6.6
 for the full breakdown). Note that this regression's r (0.905) and this
 section's raw Pearson r for the same nominal pair (0.824) do not match
 exactly: the two are computed by different scripts using different
 background thresholds (`image_statistics.py` uses `white_threshold=250`;
 `compute_structural_pixel_features.py` uses `bg_threshold=200`), a
 discrepancy identified but never reconciled to one canonical `ink_fraction`
-definition (see `progress_log.md`, 20 Jul entry, and Section 7). Both figures
+definition (see `progress_log.md`, 20 Jul entry, and Section 8). Both figures
 support the same conclusion at different resolutions of the same measurement
 convention, but the exact magnitude should not be treated as more precise
 than that.
 
-### 5.5 Failure-Case Taxonomy
+### 6.5 Failure-Case Taxonomy
 
 Every test and held-out graph was assigned to exactly one of three
 categories, checked in priority order: **out_of_distribution_size** (node
@@ -436,7 +474,7 @@ count exceeds the training set's empirical maximum, derived from
 `data/splits/train.csv` rather than hard-coded — 100 nodes in practice) takes
 precedence over density; among in-training-size graphs,
 **high_density_clutter** (`density ≥ 0.40`, the same `dense` bucket used in
-Section 4) is separated from **in_distribution_normal** (density below 0.40,
+Section 5) is separated from **in_distribution_normal** (density below 0.40,
 covering both the `sparse` and `medium` buckets).
 
 | Split | Category | Mean vertex MAE | Median vertex MAE | Mean edge MAE | Median edge MAE | n |
@@ -458,38 +496,36 @@ wide margin the worst by error — mean vertex MAE 96.64 and edge MAE 203.60,
 roughly 14× and 10× `in_distribution_normal`'s 6.67 and 20.79 respectively.
 `high_density_clutter` is not merely tolerable but the single *best*-performing
 category (mean vertex MAE 0.43, edge MAE 1.13) — confirming, at full-population
-scale, the counter-intuitive density-bucket finding from Section 4: dense,
+scale, the counter-intuitive density-bucket finding from Section 5: dense,
 visually cluttered graphs are not a failure mode for this model, they are its
 strongest regime.
 
 On the test split, the same ordering largely holds: `high_density_clutter`
 again outperforms `in_distribution_normal` on vertex count (1.27 vs. 4.00),
 though this reverses for edge count (51.82 vs. 14.42) — consistent with
-Section 4's generator-level finding that dense graphs are harder specifically
+Section 5's generator-level finding that dense graphs are harder specifically
 for edge counting, given their much larger absolute edge counts, even while
 remaining easy for vertex counting. The test-split `high_density_clutter` row
 also shows a large mean/median gap for edge MAE (mean 51.82 vs. median 4.0,
 n=110) — the same kind of outlier-driven mean distortion flagged throughout
-Section 5.6, plausibly involving the same dense/large outlier graph
-(`syn_dense_large_0069`) already identified in Sections 5.3 and 5.6. The
-median is the more representative summary of this category's typical
-performance.
+Section 6.6. The median is the more representative summary of this category's
+typical performance.
 
 Taken together, these results reorder the failure modes anticipated at
-design time: Section 2.2 flagged visual clutter and node overlap as the
+design time: Section 3.2 flagged visual clutter and node overlap as the
 primary expected risk, but the taxonomy shows **size generalization, not
 density, is the dominant and by far most severe failure mode**. A graph need
 only exceed the size the model was trained on to fail badly; it does not
 need to be visually cluttered to fail, and being visually cluttered does not,
-on its own, predict failure. This finding directly motivates the Section 6
-discussion and the Section 8 future-work item on extending the training size
+on its own, predict failure. This finding directly motivates the Section 8
+discussion and the Section 10 future-work item on extending the training size
 ceiling.
 
-### 5.6 Live-App Validation: Spot Check & Novel-Image Sanity Check
+### 6.6 Live-App Validation: Spot Check & Novel-Image Sanity Check
 
 *Populated from `evaluation/results/topolens_spotcheck_results.csv` (Part 1) and
 `evaluation/results/topolens_novelimage_results.csv` (Part 2). Unlike Sections
-5.1–5.5, which analyze the offline held-out/test split, this section validates
+6.1–6.5, which analyze the offline held-out/test split, this section validates
 the deployed app's live inference path — including the warning banner and
 multi-model comparison — against inputs chosen and uploaded after training.*
 
@@ -498,7 +534,7 @@ graphs spanning every generator, density bucket, and the 100-node training
 ceiling, uploaded through the Predict page to exercise CNN + GCN +
 graph-statistic baseline together. Clean in-distribution graphs (11 of 23, no
 warning fired) produced CNN vertex MAE ≈5.6 and edge MAE ≈17.7, consistent
-with the offline held-out figures in Section 5.5. Two findings refine the
+with the offline held-out figures in Section 6.5. Two findings refine the
 offline analysis:
 
 - **Density and size interact.** Dense-flagged graphs that are also large
@@ -511,7 +547,7 @@ offline analysis:
   to the expectation that a graph-native model generalizes better on size
   than an image-based one (mean vertex error 237 vs. CNN 179; mean edge
   error 428 vs. CNN 336; n=6 OOD-size graphs). This bears directly on the
-  Section 1 research question and is addressed in Section 6.
+  Section 1 research question and is addressed in Section 7.
 
 **Part 2 — 7-image novel-image sanity check (no ground truth).** Tested the
 app against images never seen during training: a scanned academic figure, a
@@ -525,7 +561,7 @@ the smallest relative overcount (~1.6x); the two furthest (rectangle/text
 nodes, dense numeric-edge-label network) had the largest, up to a predicted
 474 vertices on one case (~4.7x the training ceiling).
 
-**Part 3 — revised combinatorial-plausibility claim.** Section 5.5 previously stated
+**Part 3 — revised combinatorial-plausibility claim.** Section 6.5 previously stated
 (via the Part 3 free-item check) that zero predictions across the 1,676
 held-out/test set ever have predicted edges exceed the maximum possible
 edges for the predicted vertex count. This holds for all 1,676 offline
@@ -546,7 +582,7 @@ existing evaluation CSVs. Full numeric results in
 *1. Wilcoxon signed-rank test on probe deltas (n=40, paired per graph).* The
 shortcut probe's vertex-error increase under `constant_node_size` is
 significant (median 1.0 → 11.0, p=3.6×10⁻⁶, 33/40 graphs worse) — this
-upgrades the Section 5.2 finding from a summary MAE delta to a formal
+upgrades the Section 6.2 finding from a summary MAE delta to a formal
 significance result. The edge-error comparison requires care: the *mean*
 appears to improve (54.18 → 39.80), but this is an artifact of two extreme
 outlier graphs (both dense+large, the same failure mode as the Part 1
@@ -554,7 +590,7 @@ spot-check's worst case); the median (3.5 → 20.0, 35/40 graphs worse) and
 the Wilcoxon test itself (p=0.0003, significant in the *worsening*
 direction) both confirm the shortcut degrades edge prediction for the large
 majority of graphs — report median/win-loss counts, not the mean, for this
-comparison. Separately, no significant layout effect was found (Section 5.3)
+comparison. Separately, no significant layout effect was found (Section 6.3)
 under `alt_layout`/Kamada-Kawai on either vertex (p=0.499) or edge (p=0.898)
 error — a clean null result contradicting what raw mean MAE alone would
 have suggested (again driven by a single outlier graph).
@@ -605,19 +641,19 @@ molecule/protein graphs produce diameter at matched size.
 
 ---
 
-## 6. Discussion
+## 7. Discussion
 
 The Section 1 research question — can an image-based CNN compete with a
 graph-native GNN on structural regression — is answered **yes, decisively,
 for this specific comparison**: the CNN beats the GCN baseline on every
 metric, on both in-distribution synthetic data and out-of-distribution real
 data, by margins as large as 4–6x. But the honest answer needs two immediate
-qualifications, both of which the interpretation work in Section 5 was
+qualifications, both of which the interpretation work in Section 6 was
 specifically designed to surface.
 
 **First, part of the CNN's win is a confound, not pure structural
 understanding.** The rendering pipeline scales node radius inversely with
-node count (`max(15, 4000/n)`) by design, and Section 5.2/5.6 confirm — with
+node count (`max(15, 4000/n)`) by design, and Section 6.2/6.6 confirm — with
 a formal Wilcoxon test (p=3.6×10⁻⁶) — that holding node size artificially
 constant significantly degrades vertex accuracy for 33 of 40 probed graphs.
 This means the CNN is not purely "counting nodes" the way a human would; it
@@ -627,7 +663,7 @@ genuinely useful research result in its own right: it demonstrates that an
 image-based structural estimator's accuracy can be substantially inflated by
 rendering conventions that are invisible in the reported metric and would
 not survive a change of renderer, plotting library, or diagram style.
-Reassuringly, the pixel-only ink-coverage regression (Section 5.6, Part 4
+Reassuringly, the pixel-only ink-coverage regression (Section 6.6, Part 4
 item 3) shows this is not simply "counting pixels" either — ink coverage
 explains most edge-count variance on synthetic data but almost none on real
 data, so whatever the CNN has learned generalizes beyond crude pixel
@@ -653,7 +689,7 @@ than handing a GNN only raw degree* — itself a non-obvious and useful result,
 but not a general claim about the two paradigms.
 
 The single most striking secondary finding is that **the GCN degraded more
-than the CNN under out-of-distribution graph size** (Section 5.6, Part 1;
+than the CNN under out-of-distribution graph size** (Section 6.6, Part 1;
 mean vertex error 237 vs. CNN's 179, n=6). This runs counter to the intuitive
 expectation that message-passing models, being size-agnostic by
 architecture, should generalize better to unseen graph sizes than a CNN
@@ -664,24 +700,24 @@ pooling over a fixed-size embedding may lose more information as the number
 of aggregated nodes grows far beyond the training distribution than a CNN's
 convolutional features — which are computed over a fixed-resolution image
 regardless of node count — lose as an image gets visually busier. This is
-flagged as a direction for future work (Section 8) rather than a conclusion.
+flagged as a direction for future work (Section 9) rather than a conclusion.
 
-Finally, the density-bucket results (Sections 4 and 5.6) overturned a design-
+Finally, the density-bucket results (Sections 5 and 6.6) overturned a design-
 time assumption: dense graphs, expected to be the hardest case due to visual
 clutter and node overlap, are in fact the *easiest* bucket for vertex
 prediction and only become harder than sparse graphs for edge prediction,
 and only once size is also large. Out-of-distribution *size*, not density or
-clutter, is the dominant failure mode (Section 5.5) — a genuinely
+clutter, is the dominant failure mode (Section 6.5) — a genuinely
 counter-intuitive finding that changes what future model or rendering
 improvements should prioritize.
 
 ---
 
-## 7. Limitations
+## 8. Limitations
 
 **Rendering and layout sensitivity.** All reported results are specific to
 Graphviz's `sfdp` layout algorithm, which produced 100% of the training,
-test, and held-out images. The layout-sensitivity probe (Section 5.3) found
+test, and held-out images. The layout-sensitivity probe (Section 6.3) found
 no significant effect from switching to Kamada-Kawai on the small probed
 sample (p=0.499 vertex, p=0.898 edge), which is a reassuring but narrow
 result — it does not establish robustness to layout algorithms with
@@ -702,8 +738,8 @@ generalization gap, not merely an untested edge case.
 are rendered at a fixed 224×224 px with node radius scaling as
 `max(15, 4000/n)`. This choice was flagged as a potential shortcut at design
 time and is now empirically confirmed as a real, statistically significant
-contributor to the CNN's vertex-count accuracy (Section 5.2, formalized in
-Section 5.6 Part 4 via Wilcoxon signed-rank test: median vertex error
+contributor to the CNN's vertex-count accuracy (Section 6.2, formalized in
+Section 6.6 Part 4 via Wilcoxon signed-rank test: median vertex error
 increase 1.0 → 11.0 under constant node size, p=3.6×10⁻⁶, 33/40 graphs
 worse). Reported accuracy figures should be read as partly attributable to
 this rendering convention and would likely be lower under a fixed-node-size
@@ -713,13 +749,13 @@ signal driven by two outlier graphs — report medians and win/loss counts for
 this specific comparison, not means.
 
 **Out-of-distribution size ceiling.** The 100-node training ceiling is the
-single dominant failure mode identified in this project (Section 5.5),
+single dominant failure mode identified in this project (Section 6.5),
 outweighing density or visual clutter, both in the offline failure taxonomy
 and in the live novel-image check.
 
 **Dense-bucket warning miscalibration.** The deployed app's current warning
 banner treats "dense" as a single flat-risk bucket (MAE citation 0.43/1.12).
-Section 5.6 (Part 4, item 2) shows this is safe — in fact the safest bucket
+Section 6.6 (Part 4, item 2) shows this is safe — in fact the safest bucket
 — for vertex prediction at every size tested; safe for edge prediction only
 at small sizes; and high-risk for edge prediction at large sizes (3.3x worse
 than sparse by 75–100 nodes). A size-aware warning split is recommended over
@@ -727,15 +763,15 @@ the current flat citation.
 
 **Baseline-comparison fairness.** The GCN baseline's only node feature is
 normalized degree — no richer structural encodings were provided (Section
-6). The headline CNN-vs-GCN result should be read as specific to this
+7). The headline CNN-vs-GCN result should be read as specific to this
 minimal-feature GCN, not as a general claim that image-based inference
 outperforms graph-native inference. Separately, the GCN's out-of-distribution
--size degradation exceeding the CNN's (Section 5.6, n=6) is a small-sample
+-size degradation exceeding the CNN's (Section 6.6, n=6) is a small-sample
 result and should be treated as a direction for further investigation, not a
 settled finding about GNN generalization.
 
 **Combinatorial-plausibility claim is qualified, not absolute.** One
-exception was found in 30 live-app predictions (Section 5.6, Part 3): an
+exception was found in 30 live-app predictions (Section 6.6, Part 3): an
 input combining multiple diagrams and prose text in a single frame produced
 a predicted edge count exceeding the combinatorial maximum for the predicted
 vertex count. This appears to be an input-distribution failure specific to
@@ -744,7 +780,7 @@ use, but the claim of "never violated" should not be repeated without this
 caveat.
 
 **Pixel-only baseline interpretation.** The ink-coverage regression (Section
-5.6, Part 4, item 3) should be read as reassuring rather than incriminating:
+6.6, Part 4, item 3) should be read as reassuring rather than incriminating:
 it explains most edge-count variance on synthetic data but almost none on
 real held-out data, meaning the CNN's real-world accuracy is not attributable
 to simple pixel-counting. However, this comparison is itself only possible on
@@ -756,12 +792,12 @@ that caveat in mind.
 **Ink-fraction measurement inconsistency.** Two different scripts compute
 `ink_fraction` with two different background thresholds —
 `evaluation/image_statistics.py` (`white_threshold=250`, used for Section
-5.4's correlation table) and `evaluation/compute_structural_pixel_features.py`
-(`bg_threshold=200`, used for the Section 5.6 pixel-only-baseline regression)
+6.4's correlation table) and `evaluation/compute_structural_pixel_features.py`
+(`bg_threshold=200`, used for the Section 6.6 pixel-only-baseline regression)
 — and were never reconciled to one canonical definition. Both give the same
 qualitative conclusion (ink coverage is a strong edge-count proxy on
 synthetic data, a weak one on real data), but the exact correlation
-magnitudes reported in Sections 5.4 and 5.6 are not directly comparable to
+magnitudes reported in Sections 6.4 and 6.6 are not directly comparable to
 each other and should not be cited interchangeably.
 
 **Training reproducibility.** Two otherwise-identical full training runs
@@ -772,19 +808,19 @@ some run-to-run variance not captured by the fixed random seed alone.
 
 ---
 
-## 8. Future Work
+## 9. Future Work
 
 - **Layout-augmented training**, mixing multiple layout algorithms (Kamada-
   Kawai, hierarchical, circular) per graph during training, to directly
   test and reduce dependence on any single layout's visual conventions,
-  extending the narrow Section 5.3 result to a training-time intervention.
+  extending the narrow Section 6.3 result to a training-time intervention.
 - **A fixed-node-size rendering variant trained end-to-end**, to measure how
   much of the CNN's accuracy survives once the confirmed node-size shortcut
-  (Section 5.2/5.6/7) is removed at the source rather than only probed
+  (Section 6.2/6.6/8) is removed at the source rather than only probed
   post-hoc.
 - **A richer GNN baseline** — clustering coefficient, degree-distribution
   moments, k-hop aggregated statistics, or learned positional encodings as
-  node features — to make the Section 6 CNN-vs-GNN comparison fair on
+  node features — to make the Section 7 CNN-vs-GCN comparison fair on
   feature budget, not just architecture.
 - **A larger, more diverse real-world out-of-distribution test set** beyond
   MUTAG/PROTEINS, to confirm or refute the small-sample (n=6) finding that
@@ -795,10 +831,92 @@ some run-to-run variance not captured by the fixed random seed alone.
   implicit.
 - **A size-aware warning banner** in the deployed app, replacing the current
   flat dense-bucket MAE citation with the size-binned risk profile
-  established in Section 5.6, Part 4, item 2.
+  established in Section 6.6, Part 4, item 2.
 - **Extension to directed, weighted, or attributed graphs**, which this
   project deliberately excluded to isolate pure topology (vertex/edge count)
   as the target property.
+
+---
+
+## 10. Broader Impact and Ethics Statement
+
+**Data and privacy.** All data used in this project is either synthetically generated (the 2,500 NetworkX graphs) or drawn from long-established, publicly available, non-personal benchmark datasets (MUTAG, a set of chemical compound structures; PROTEINS, a set of protein contact-map topologies) [11]. No personal, sensitive, or human-subject data is involved anywhere in this pipeline.
+
+**Potential applications and misuse.** The intended positive use case is narrow and low-risk: recovering approximate structural statistics from rendered diagrams where the underlying graph-native data is unavailable, e.g. digitizing legacy engineering schematics or making scanned diagrams more accessible to automated tooling. Because the task is a bounded counting/regression problem rather than a generative or decision-making one, the realistic misuse surface is small; the authors are not aware of a plausible harmful application specific to this model that would not apply equally to any general-purpose CNN.
+
+**Risk of overtrust in image-based structural inference.** The more concrete ethical consideration this project surfaces is methodological rather than domain-specific: Section 6 demonstrates that a visual model can achieve strong accuracy for reasons other than the one a practitioner might assume (topological understanding), driven instead by an incidental rendering confound. This is offered as a worked example of why an interpretability audit — not just a held-out accuracy number — should be considered a prerequisite before deploying an image-based estimator in any setting where the failure mode matters, and is a large part of the motivation for treating Section 6 as a co-equal deliverable alongside the headline results (Section 1).
+
+**Compute and environmental cost.** Both models are small (see Model Cards, Section 3.4) and were trained for 30 epochs on a single Colab T4 GPU in well under an hour each; the environmental and compute cost of this project is minimal relative to typical deep learning research.
+
+## 11. Reproducibility Statement
+
+Reproducibility was treated as a design constraint throughout this project rather than an afterthought: every graph's render and layout seed is derived deterministically from its `graph_id` via SHA-256 (Section 3.1), and both models use a fixed random seed (42) for data splitting and weight initialization (Section 3.5). The one caveat to this is documented openly rather than hidden: GPU/cuDNN non-determinism on Colab still produced a small run-to-run variance in headline metrics (Section 3.5, and the Training Reproducibility item in Section 8), so the fixed seed should be understood as controlling data splits and initialization exactly, not as guaranteeing bit-identical training curves across hardware.
+
+**Compute environment.** Both the CNN and the GCN baseline were trained on Google Colab with a single T4 GPU; all other steps (rendering, evaluation, interpretability analysis) ran on a local CPU-only machine. No specialized or non-public hardware was used anywhere in this pipeline.
+
+**Code and data availability.** The synthetic dataset is fully regenerable from the fixed seed and the generator parameters listed in Section 3.1; the real-world held-out data (MUTAG, PROTEINS) is the standard, publicly available TUDataset benchmark [11] loaded via PyTorch Geometric. The full set of source tables underlying every figure and table in this report is listed in the Appendix.
+
+**Exact reproduction commands.** To reproduce these findings end to end, run the following in the project root, in order:
+
+1. **Setup and installation:**
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate
+pip install -r requirements.txt
+```
+
+2. **Render the synthetic and real-world graphs:**
+
+```bash
+python data/load_tu_datasets.py
+python data/generate_synthetic.py
+```
+
+3. **Split the datasets and perform training:**
+
+```bash
+python data/make_splits.py
+python models/train_cnn.py
+python models/gnn_baseline.py
+```
+
+4. **Perform evaluations and generate results:**
+
+```bash
+python evaluation/evaluate.py
+python evaluation/ink_coverage_analysis.py
+python evaluation/shortcut_probe.py
+python evaluation/failure_taxonomy.py
+python evaluation/compute_structural_pixel_features.py
+```
+
+All scripts use deterministic random seed initialization from `config.py` and `config.yaml` (seed = 42).
+
+## Acknowledgments
+
+The author thanks Dr. Muhammad Aasim Qureshi for supervising this project and for defining its scope within the Deep Learning internship at FAST NUCES Lahore. Model training was carried out on Google Colab using a single T4 GPU, provided as part of Colab's free tier; no other external funding or compute resources were used in this project.
+
+## 12. References
+
+The following works are cited by number, in the order they first appear in the text, wherever a specific dataset, tool, model, or statistical method is named (e.g. "NetworkX [7]").
+
+1. Kipf, T. N., & Welling, M. (2017). Semi-supervised classification with graph convolutional networks. *International Conference on Learning Representations (ICLR)*.
+2. Fey, M., & Lenssen, J. E. (2019). Fast graph representation learning with PyTorch Geometric. *ICLR Workshop on Representation Learning on Graphs and Manifolds*.
+3. Fruchterman, T. M. J., & Reingold, E. M. (1991). Graph drawing by force-directed placement. *Software: Practice and Experience*, 21(11), 1129–1164.
+4. Gansner, E. R., & North, S. C. (2000). An open graph visualization system and its applications to software engineering. *Software: Practice and Experience*, 30(11), 1203–1233.
+5. Geirhos, R., Jacobsen, J.-H., Michaelis, C., Zemel, R., Brendel, W., Bethge, M., & Wichmann, F. A. (2020). Shortcut learning in deep neural networks. *Nature Machine Intelligence*, 2(11), 665–673.
+6. Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based localization. *IEEE International Conference on Computer Vision (ICCV)*, 618–626.
+7. Hagberg, A., Schult, D., & Swart, P. (2008). Exploring network structure, dynamics, and function using NetworkX. *Proceedings of the 7th Python in Science Conference (SciPy2008)*, 11–15.
+8. Erdős, P., & Rényi, A. (1959). On random graphs I. *Publicationes Mathematicae Debrecen*, 6, 290–297.
+9. Barabási, A.-L., & Albert, R. (1999). Emergence of scaling in random networks. *Science*, 286(5439), 509–512.
+10. Watts, D. J., & Strogatz, S. H. (1998). Collective dynamics of 'small-world' networks. *Nature*, 393(6684), 440–442.
+11. Morris, C., Kriege, N. M., Bause, F., Kersting, K., Mutzel, P., & Neumann, M. (2020). TUDataset: A collection of benchmark datasets for learning with graphs. *ICML 2020 Workshop on Graph Representation Learning and Beyond*.
+12. Debnath, A. K., Lopez de Compadre, R. L., Debnath, G., Shusterman, A. J., & Hansch, C. (1991). Structure-activity relationship of mutagenic aromatic and heteroaromatic nitro compounds. *Journal of Medicinal Chemistry*, 34(2), 786–797.
+13. Borgwardt, K. M., Ong, C. S., Schönauer, S., Vishwanathan, S. V. N., Smola, A. J., & Kriegel, H.-P. (2005). Protein function prediction via graph kernels. *Bioinformatics*, 21(suppl_1), i47–i56.
+14. Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., et al. (2019). PyTorch: An imperative style, high-performance deep learning library. *Advances in Neural Information Processing Systems (NeurIPS)*, 32.
+15. Kingma, D. P., & Ba, J. (2015). Adam: A method for stochastic optimization. *International Conference on Learning Representations (ICLR)*.
+16. Wilcoxon, F. (1945). Individual comparisons by ranking methods. *Biometrics Bulletin*, 1(6), 80–83.
 
 ---
 
@@ -843,11 +961,11 @@ some run-to-run variance not captured by the fixed random seed alone.
 | `cnn_worst_edge_errors.csv` | Worst-error graphs for CNN edge prediction |
 | `cnn_training_log.csv` | Epoch-level CNN training log |
 | `gnn_training_log.csv` | Epoch-level GNN training log |
-| `topolens_spotcheck_results.csv` | Live-app spot check: 23 graphs, CNN/GCN/baseline predictions, warning-fired status (Section 5.6, Part 1) |
-| `topolens_novelimage_results.csv` | Live-app novel-image sanity check: 7 images, no ground truth, combinatorial-plausibility check (Section 5.6, Part 2) |
-| `topolens_free_analyses_results.csv` | Wilcoxon signed-rank test results (shortcut + layout probes) and warning-banner validation by size bin (Section 5.6, Part 4, items 1–2) |
+| `topolens_spotcheck_results.csv` | Live-app spot check: 23 graphs, CNN/GCN/baseline predictions, warning-fired status (Section 6.6, Part 1) |
+| `topolens_novelimage_results.csv` | Live-app novel-image sanity check: 7 images, no ground truth, combinatorial-plausibility check (Section 6.6, Part 2) |
+| `topolens_free_analyses_results.csv` | Wilcoxon signed-rank test results (shortcut + layout probes) and warning-banner validation by size bin (Section 6.6, Part 4, items 1–2) |
 | `structural_pixel_features.csv` | Per-graph ink fraction, diameter, and clustering coefficient merged onto `failure_case_categories.csv`, generated by `compute_structural_pixel_features.py` (source data for Part 4, items 3–4) |
-| `topolens_pixel_structural_correlations.csv` | Pixel-only baseline regression stats and structural (diameter/clustering) correlation + collinearity + partial-correlation results (Section 5.6, Part 4, items 3–4) |
+| `topolens_pixel_structural_correlations.csv` | Pixel-only baseline regression stats and structural (diameter/clustering) correlation + collinearity + partial-correlation results (Section 6.6, Part 4, items 3–4) |
 
 ### Application (`app/`)
 
