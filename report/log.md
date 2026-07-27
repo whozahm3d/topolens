@@ -706,3 +706,28 @@ sessions before final submission.
 - **Synchronized UI copy in `app.py`**: Removed stale "(coming soon)" label from Research Insights sidebar description; updated to describe actual submodules (Grad-CAM attention, shortcut-learning probe, layout sensitivity, failure-case taxonomy).
 - **Added Graphviz spring fallback warning in `render_graphs.py`**: Replaced dead `pass` block with `[WARN]` print statement notifying when `graphviz_sfdp` layout is missing and falls back to `networkx_spring`.
 - **System Verification**: Tested `app/app.py` via Streamlit server execution; verified clean startup on port 8501.
+
+# 2026-07-25 — LaTeX report expanded to full paper structure; recompile verified
+
+`report/latex/topolens_report.tex` gained six new sections/subsections beyond
+the original 8-section structure, moving it from "mini research report" toward
+a full paper format: **Related Work** (4 subsections positioning the project
+against graph-native representation learning, graph drawing/layout literature,
+and shortcut-learning research), **Model Cards** (subsection 6.5, a side-by-side
+CNN vs. GCN card covering training data, regime, out-of-scope use, and known
+limitations), **Broader Impact and Ethics Statement**, **Reproducibility
+Statement**, **Acknowledgments**, and a **References** section (16 real,
+correctly attributed citations — Kipf & Welling, Geirhos et al., the actual
+TUDataset/MUTAG/PROTEINS papers, etc.).
+
+- **Recompile verification**: the committed `.toc`/`.aux`/`.out`/`.log` files
+  in `report/latex/` were a pass or two behind the final `.tex`, so a full
+  clean 3-pass `pdflatex` rebuild was run to confirm the committed
+  `topolens_report.pdf` itself (not just the source) reflects the new
+  structure correctly. Result: 45 pages, zero LaTeX errors, no unresolved
+  `\ref` cross-references — the committed PDF was already correct; only the
+  auxiliary files on disk were stale. No content changes were needed as a
+  result of this check.
+- **`FINAL_REPORT.md` note**: the markdown report was not updated to mirror
+  these new sections and remains at the original 8-section scope. This is a
+  deliberate open decision, not an oversight — see Limitations/Next below.

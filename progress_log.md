@@ -889,3 +889,77 @@ None blocking. All core model evaluation scripts, Streamlit frontend views, and 
 ### Next
 
 Project implementation and code verification are complete. Ready for submission and final documentation hand-off.
+
+## Day 11 and 12 — 24 and 25 Jul 2026 — LaTeX Report Expansion to Full Paper Structure
+
+### Goal
+
+Extend `report/latex/topolens_report.tex` beyond the original 8-section mini
+report into a fuller paper structure (Related Work, Model Cards, Broader
+Impact/Ethics, Reproducibility Statement, Acknowledgments, References), and
+confirm the compiled PDF deliverable is actually correct before treating this
+as done.
+
+### What was done
+
+- **Added Related Work** (Section 2, 4 subsections): positions the project
+  against graph-native representation learning (GNNs/message passing), the
+  graph-drawing/layout literature (force-directed placement, Graphviz sfdp),
+  and shortcut-learning research, explaining the gap each leaves that this
+  project's question (CNN-on-rendered-image structural inference) fills.
+- **Added Model Cards** (Subsection 6.5): a CNN-vs-GCN comparison card
+  covering training data, training regime, out-of-scope use, and each
+  model's primary known limitation.
+- **Added Broader Impact and Ethics Statement, Reproducibility Statement,
+  Acknowledgments, and References** (16 citations, all real and verified —
+  Kipf & Welling, PyTorch Geometric, Fruchterman-Reingold, Graphviz,
+  Geirhos et al. on shortcut learning, Grad-CAM, NetworkX, Erdős–Rényi,
+  Barabási–Albert, Watts-Strogatz, TUDataset, MUTAG, PROTEINS, PyTorch,
+  Adam, Wilcoxon 1945).
+- **Verified the compiled PDF, not just the source**: the `.toc`/`.aux`
+  files committed alongside `topolens_report.pdf` didn't list the new
+  sections, which looked like the PDF itself might be stale. Ran a clean
+  3-pass `pdflatex` rebuild in an isolated environment to check.
+
+### How
+
+Copied `report/latex/` and `report/figures/` into an isolated build
+directory (preserving the `../figures/` relative path the `.tex` expects),
+deleted all existing `.aux`/`.toc`/`.lof`/`.lot`/`.out`/`.log` files, and ran
+`pdflatex -interaction=nonstopmode` three times in sequence as the file's
+own header comment instructs. Compared the freshly-built PDF's page count
+and a sample of resolved `\ref` cross-references (e.g. "Section 6 and
+Section 7 describe the CNN, the GCN baseline... Section 8 reports the
+headline quantitative comparison") against the PDF already committed in the
+repo.
+
+### Why
+
+- **Why recompile instead of trusting the committed PDF?** The `.toc` file
+  on disk is written *during* a pass but only displayed on the page from the
+  *previous* pass's version — so a `.toc` missing new sections doesn't
+  necessarily mean the PDF body is wrong, but it's not proof either way
+  without actually rebuilding and comparing.
+- **Why does this matter?** If the committed PDF had genuinely been stale
+  (missing sections, or `\ref`s showing wrong numbers after new chapters
+  were inserted before existing ones), it would have been the version
+  actually handed to a supervisor — a silent, easy-to-miss error.
+
+### Issues
+
+None blocking. The committed `topolens_report.pdf` (45 pages) matches the
+clean rebuild exactly — same page count, same resolved cross-reference
+numbers, zero LaTeX errors on any of the 3 passes. Only the auxiliary
+`.toc`/`.aux`/`.out`/`.log` files committed in `report/latex/` are a pass
+behind the final PDF; this has no effect on the PDF itself and is cosmetic.
+
+### Next
+
+Two open, non-blocking decisions before final submission:
+
+1. Whether to backport the new sections (Related Work, Model Cards, Broader
+   Impact, Reproducibility Statement, Acknowledgments, References) into
+   `FINAL_REPORT.md`, or deliberately keep it as the shorter-scope version
+   alongside the fuller LaTeX/PDF report.
+2. Recommit refreshed `.toc`/`.aux`/`.out`/`.log` files (or gitignore them)
+   so the repo's auxiliary build artifacts stay in sync with the PDF.
