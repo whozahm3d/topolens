@@ -132,6 +132,15 @@ Before creating your Pull Request, verify the following:
 
 ---
 
+---
+
+## 🙌 Project Credits
+
+- **Ali Ahmad** ([@whozahm3d](https://github.com/whozahm3d)) — project author: research design, implementation, and analysis.
+- **Antigravity IDE** — agentic coding tool used for a subset of code generation and execution during development, under the author's direction and review.
+
+---
+
 ## 💬 Need Help?
 
 If you have questions about the codebase structure or research methodology, feel free to open a Q&A issue on GitHub or reach out to the project maintainers. Thank you for contributing to **Topolens**!
