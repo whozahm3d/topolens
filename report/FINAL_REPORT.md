@@ -80,7 +80,7 @@ Erdős–Rényi, Barabási–Albert, Watts–Strogatz, random trees, and dense
 Erdős–Rényi variants — crossed with 4 node-count tiers:
 
 | Tier | Node range |
-|---|---|
+| --- | --- |
 | tiny | 5–10 |
 | small | 10–25 |
 | medium | 25–50 |
@@ -159,7 +159,7 @@ where per-generator mean density is fit exclusively on the training split.
 The table below summarizes both models in a single, scannable reference, in the spirit of standard model-reporting practice. Parameter counts are analytically derived from the layer-by-layer architecture described above (not measured from a saved checkpoint) and are reported as approximate, rounded figures rather than exact values.
 
 | Field | CNN Regressor (`CustomCNNRegressor`) | GCN Baseline (`GraphCountGCN`) |
-|---|---|---|
+| --- | --- | --- |
 | Architecture | 4 conv blocks (Conv–BN–ReLU–MaxPool), 3→32→64→128→256 channels, global average pool, FC head | 3 `GCNConv` layers with BN–ReLU, 1→64→64→64 channels, global mean pool, FC head |
 | Parameters (approx.) | ~423K | ~17K |
 | Input | 224×224 RGB rendered graph image | Graph with 1-dimensional normalized-degree node feature |
@@ -196,7 +196,7 @@ Section 8.
 **Test split (in-distribution synthetic, n=375):**
 
 | Target | Metric | CNN | GCN | Graph-statistic |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Vertices | MAE | **3.20** | 19.05 | 0.00* |
 | Vertices | RMSE | **6.08** | 26.61 | 0.00* |
 | Edges | MAE | **25.39** | 148.98 | 120.53 |
@@ -205,7 +205,7 @@ Section 8.
 **Held-out split (real MUTAG + PROTEINS, n=1,301):**
 
 | Target | Metric | CNN | GCN | Graph-statistic |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Vertices | MAE | **10.62** | 21.15 | 0.00* |
 | Vertices | RMSE | **31.30** | 44.09 | 0.00* |
 | Edges | MAE | **28.03** | 56.84 | 363.65 |
@@ -226,7 +226,7 @@ Section 6's interpretation work: a result this decisive demands scrutiny of
 **By generator type (test split, MAE):**
 
 | Generator | CNN Vert. | GCN Vert. | CNN Edges | GCN Edges | Graph-stat Edges |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | barabasi_albert | 2.83 | 18.68 | 13.80 | 81.53 | 184.23 |
 | dense | 1.75 | 21.65 | 75.63 | 497.71 | 76.67 |
 | erdos_renyi | 2.47 | 15.49 | 22.48 | 96.92 | 51.83 |
@@ -243,7 +243,7 @@ density — is (expectedly) the strongest of the three.
 **By source dataset (held-out split, MAE):**
 
 | Dataset | CNN Vert. | GCN Vert. | CNN Edges | GCN Edges | Graph-stat Edges |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | MUTAG | 1.07 | 5.45 | 1.85 | 17.03 | 24.60 |
 | PROTEINS | 12.23 | 23.80 | 32.45 | 63.57 | 420.93 |
 
@@ -255,7 +255,7 @@ homogeneous; PROTEINS spans 4–620 nodes).
 **By density bucket (held-out split, MAE):**
 
 | Bucket | CNN Vert. | GCN Vert. | CNN Edges | GCN Edges | Graph-stat Edges |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | dense | 0.43 | 13.94 | 1.13 | 72.10 | 6.51 |
 | medium | 2.03 | 7.57 | 5.91 | 44.96 | 12.63 |
 | sparse | 18.75 | 32.13 | 49.11 | 61.90 | 683.54 |
@@ -325,7 +325,7 @@ algorithm, edge style, and image resolution identical to the canonical
 render — isolating node-size as the only variable that changes.
 
 | Tier | Original vertex MAE | Constant-node-size vertex MAE | Original edge MAE | Constant-node-size edge MAE |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | tiny | 0.3 | 1.4 | 1.6 | 3.5 |
 | small | 1.0 | 8.5 | 3.3 | 21.2 |
 | medium | 3.5 | 15.3 | 16.3 | 51.7 |
@@ -367,7 +367,7 @@ size, same edge style, only the node *positions* change — to test whether
 the model has overfit to `sfdp`'s specific spatial conventions.
 
 | Tier | Original vertex MAE | Alt-layout vertex MAE | Original edge MAE | Alt-layout edge MAE |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | tiny | 0.3 | 0.4 | 1.6 | 1.6 |
 | small | 1.0 | 1.0 | 3.3 | 4.9 |
 | medium | 3.5 | 3.8 | 16.3 | 13.2 |
@@ -408,7 +408,7 @@ the CNN's outputs track these simple image statistics rather than genuine
 structural features.
 
 | Pair | Test (synthetic) r | Held-out (real) r |
-|---|---|---|
+| --- | --- | --- |
 | ink_fraction vs. num_nodes | 0.538 | 0.070 |
 | ink_fraction vs. num_edges | 0.824 | 0.093 |
 | ink_fraction vs. pred_num_vertices | 0.618 | 0.172 |
@@ -478,7 +478,7 @@ Section 5) is separated from **in_distribution_normal** (density below 0.40,
 covering both the `sparse` and `medium` buckets).
 
 | Split | Category | Mean vertex MAE | Median vertex MAE | Mean edge MAE | Median edge MAE | n |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | held_out | high_density_clutter | 0.43 | 0.0 | 1.13 | 1.0 | 144 |
 | held_out | in_distribution_normal | 6.67 | 3.0 | 20.79 | 10.0 | 1,090 |
 | held_out | out_of_distribution_size | 96.64 | 71.0 | 203.60 | 155.0 | 67 |
@@ -866,14 +866,14 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-2. **Render the synthetic and real-world graphs:**
+1. **Render the synthetic and real-world graphs:**
 
 ```bash
 python data/load_tu_datasets.py
 python data/generate_synthetic.py
 ```
 
-3. **Split the datasets and perform training:**
+1. **Split the datasets and perform training:**
 
 ```bash
 python data/make_splits.py
@@ -881,7 +881,7 @@ python models/train_cnn.py
 python models/gnn_baseline.py
 ```
 
-4. **Perform evaluations and generate results:**
+1. **Perform evaluations and generate results:**
 
 ```bash
 python evaluation/evaluate.py
@@ -895,7 +895,7 @@ All scripts use deterministic random seed initialization from `config.py` and `c
 
 ## Acknowledgments
 
-The author thanks Dr. Muhammad Aasim Qureshi for supervising this project and for defining its scope within the Deep Learning internship at FAST NUCES Lahore. Model training was carried out on Google Colab using a single T4 GPU, provided as part of Colab's free tier; no other external funding or compute resources were used in this project.
+Model training was carried out on Google Colab using a single T4 GPU, provided as part of Colab's free tier; no other external funding or compute resources were used in this project. The TU Dortmund graph benchmark collection (MUTAG, PROTEINS), accessed via PyTorch Geometric, is gratefully acknowledged as the source of the real-world held-out validation data. Portions of the implementation also benefited from Antigravity IDE, an agentic coding tool used for a subset of code generation and execution under the author's direction and review.
 
 ## 12. References
 
@@ -925,7 +925,7 @@ The following works are cited by number, in the order they first appear in the t
 ### Figures (`report/figures/`)
 
 | File | Description |
-|---|---|
+| --- | --- |
 | `gradcam_grid_by_generator.png` | Grad-CAM overlay grid, one column per generator type |
 | `gradcam_grid_failure_cases.png` | Grad-CAM overlays for worst-error cases |
 | `probe_variant_mae_comparison.png` | Bar chart: MAE by probe variant |
@@ -947,7 +947,7 @@ The following works are cited by number, in the order they first appear in the t
 ### Tables (`evaluation/results/`)
 
 | File | Description |
-|---|---|
+| --- | --- |
 | `cnn_metrics.csv` | CNN MAE/RMSE by split and breakdown |
 | `gnn_metrics.csv` | GNN MAE/RMSE by split and breakdown |
 | `graph_statistic_metrics.csv` | Graph-statistic baseline metrics |
@@ -970,6 +970,6 @@ The following works are cited by number, in the order they first appear in the t
 ### Application (`app/`)
 
 | File | Description |
-|---|---|
+| --- | --- |
 | `app.py` | Streamlit inference app — **Cinematic Instrument design system** (dark film-grade palette, Fraunces display type); single multi-type file uploader (`png`, `jpg`, `jpeg`, `graphml`, `csv`, `txt`); multi-file select; CNN inference + hero stat display; Grad-CAM toggle (vertex-target + edge-target overlays); empirical validation panel (Ground Truth vs Prediction table + topological-property cards) active for both graph files and dataset images matched via `labels_processed.csv`; model limitations expander with live CSV values; live uploads and predictions logged to `render/novel_uploads/`. |
 | `.streamlit/config.toml` | Theme: `backgroundColor = "#F5F5F5"`, `primaryColor = "#000000"`, `secondaryBackgroundColor = "#E5E5E5"`, `textColor = "#000000"`. |
