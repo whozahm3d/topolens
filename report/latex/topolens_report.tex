@@ -98,7 +98,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\small\textit{Topolens}}
-\fancyhead[R]{\small\textit{Deep Learning Internship --- FAST NUCES}}
+\fancyhead[R]{\small\textit{Independent Research Project --- FAST NUCES}}
 \renewcommand{\headrulewidth}{0.4pt}
 \fancyfoot[C]{\thepage}
 \fancypagestyle{plain}{%
@@ -146,11 +146,10 @@
     \vspace{2.5cm}
 
     {\large \textbf{Author:} Ali Ahmad 23L-2619 \par}
-    {\large \textbf{Track:} Deep Learning Internship deliverable \par}
+    {\large \textbf{Track:} Independent Research Project \par}
 
     \vspace{2cm}
 
-    {\large \textbf{Supervisor:} Dr. Muhammad Aasim Qureshi \par}
     {\large \textbf{Institution:} FAST NUCES Lahore \par}
 
     \vspace{2.5cm}
@@ -351,7 +350,7 @@ DPI & Dots Per Inch \\
 \end{table}
 
 \subsection{Motivation: Personal Context}
-This project was undertaken as the assigned scope of the author's Deep Learning internship at FAST NUCES Lahore, under the supervision of Dr. Muhammad Aasim Qureshi. The specific problem---inferring graph topology from rendered images rather than from graph-native representations---was defined as part of that internship's scope. Beyond the assigned scope, the problem area also aligned with the author's existing interest in computer vision, which motivated a deeper engagement with the CNN-based approach and its failure modes than a purely assigned task would otherwise warrant. In practice, this meant that once the initial pipeline was working, additional time was spent specifically on the interpretability analysis in Section~\ref{ch:interpretation}---probing \emph{why} the model works rather than stopping at the headline accuracy numbers---since that question was of independent interest to the author beyond what the assigned deliverable strictly required.
+This project began as a personal exploration of a question sitting at the intersection of computer vision and graph representation learning: whether a CNN operating purely on rendered images can recover structural properties that graph-native models compute directly from topology. The problem framing---inferring graph structure from images rather than from graph-native representations---was chosen deliberately as a research contrast rather than a practical workaround, motivated by the author's existing interest in computer vision. In practice, this meant that once the initial pipeline was working, additional time was spent specifically on the interpretability analysis in Section~\ref{ch:interpretation}---probing \emph{why} the model works rather than stopping at the headline accuracy numbers---since that question was of independent interest to the author beyond the core pipeline itself.
 
 % ----------------------------------------------------------------------
 % SECTION 3: DATASET DESCRIPTION
@@ -1162,7 +1161,7 @@ All scripts use deterministic random seed initialization from \texttt{config.py}
 % ----------------------------------------------------------------------
 \section*{Acknowledgments}
 \addcontentsline{toc}{section}{Acknowledgments}
-The author thanks Dr. Muhammad Aasim Qureshi for supervising this project and for defining its scope within the Deep Learning internship at FAST NUCES Lahore. Model training was carried out on Google Colab using a single T4 GPU, provided as part of Colab's free tier; no other external funding or compute resources were used in this project.
+Model training was carried out on Google Colab using a single T4 GPU, provided as part of Colab's free tier; no other external funding or compute resources were used in this project. The TU Dortmund graph benchmark collection (MUTAG, PROTEINS), accessed via PyTorch Geometric, is gratefully acknowledged as the source of the real-world held-out validation data. Portions of the implementation also benefited from Antigravity IDE, an agentic coding tool used for a subset of code generation and execution under the author's direction and review.
 
 % ----------------------------------------------------------------------
 % SECTION: REFERENCES
