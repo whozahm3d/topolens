@@ -138,7 +138,7 @@
 - **Headline numbers (overall MAE, probe_summary.csv):**
 
   | variant | vertex_mae | edge_mae |
-  |---|---|---|
+  | --- | --- | --- |
   | original | 3.43 | 54.18 |
   | constant_node_size | 10.48 | 39.80 |
   | alt_layout | 3.08 | 35.53 |
@@ -158,7 +158,7 @@
 - **Headline numbers — ink_coverage_correlations.csv (Pearson r):**
 
   | split | metric_x | metric_y | r |
-  |---|---|---|---|
+  | --- | --- | --- | --- |
   | test | ink_fraction | num_edges | **0.824** |
   | test | ink_fraction | pred_num_edges | **0.845** |
   | test | mean_component_area | pred_num_vertices | **0.627** |
@@ -170,7 +170,7 @@
 - **Headline numbers — failure_case_summary.csv:**
 
   | split | category | mean_vertex_mae | mean_edge_mae | n |
-  |---|---|---|---|---|
+  | --- | --- | --- | --- | --- |
   | held_out | out_of_distribution_size | **96.64** | **203.60** | 67 |
   | held_out | in_distribution_normal | 6.67 | 20.79 | 1090 |
   | held_out | high_density_clutter | 0.43 | 1.13 | 144 |
@@ -666,7 +666,7 @@ introducing unnecessary churn on things that weren't actually broken.
 ### Why
 
 **Why Option A (doc fix) over a full config.py/config.yaml refactor for
-Problem 3?** The project is 10 days into a 1-week deadline and essentially
+Problem 3?** The project is 10 days in and essentially
 feature-complete; a full single-source-of-truth rewrite touching 18 files
 is real surface area for regression this late, for a conflict that (once
 verified) turned out to be dead/unused documentation rather than a live
@@ -685,7 +685,7 @@ into a working pipeline.
 None blocking. `torch` version drift (2.11.0 → 2.13.0) happened
 independent of this project and wasn't something any of the six flagged
 problems anticipated — worth keeping an eye on if the environment gets
-upgraded again before submission.
+upgraded again going forward.
 
 ### Next
 
@@ -699,7 +699,7 @@ placeholders — everything else in the report is now complete.
 Full read-through of every file in the repo (26 files across `app/`,
 `data/`, `evaluation/`, `models/`, `render/`, root). Purpose: confirm
 no silent regressions had been introduced across the Day 5–10 patch
-sessions before final submission.
+sessions.
 
 - **`requirements.txt` invalid torch pin**: Corrected `torch==2.13.0` to `torch==2.5.1` (the actual stable build used for GPU training), updated `torchvision>=0.20` and `torch-geometric==2.6.0`, and clarified in comments that training ran on Colab T4 GPU (CUDA) while `map_location="cpu"` handles local CPU execution.
 - **Unsafe PyTorch checkpoint loads in `evaluate.py`**: Added `weights_only=False` to `load_cnn_model()` and `load_gnn_model()` in `evaluation/evaluate.py` to support checkpoints with nested Python metadata (`normalize_stats` tuple, `config` dict).
