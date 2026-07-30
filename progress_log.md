@@ -16,7 +16,7 @@ reasoning level; that one stays at the debugging level.
 
 ### Goal
 
-Go from "I've been assigned this project" to a fully scoped plan with a
+Go from an initial project idea to a fully scoped plan with a
 working environment and a committed skeleton, so that Day 2 could start
 writing pipeline code immediately instead of still making design decisions.
 
@@ -75,9 +75,8 @@ genuinely useful to answer.
   deliberately balanced coverage across structural regimes — sparse vs.
   dense, tree-like vs. clustered vs. random, tiny vs. large — which a
   regression model needs to generalize rather than overfit to one
-  distribution. The supervisor explicitly greenlit a self-generated
-  dataset as long as the ground truth is accurate, which synthetic
-  generation trivially satisfies.
+  distribution. A self-generated dataset was the natural choice here,
+  since synthetic generation trivially guarantees accurate ground truth.
 - *Real-world (MUTAG/PROTEINS)* exists to test whether patterns learned on
   synthetic, randomly-generated graphs transfer to organic graphs with
   their own structural regularities (molecular valence constraints for
@@ -171,8 +170,7 @@ layouts that are worth having for a handful of report figures. So the
 split plays to each tool's strength: NetworkX/Graphviz/matplotlib for
 everything that needs to be reproducible at scale, Gephi for the ~24
 samples that need to look good in a write-up. This also happens to align
-with what the supervisor was implicitly pointing at when they referenced
-existing graph-to-image tooling — this is that ecosystem (Gephi/Graphviz/
+with the existing graph-to-image tooling ecosystem (Gephi/Graphviz/
 NetworkX), used deliberately rather than reinvented.
 
 **Why the Graphviz → pydot → spring-layout fallback chain?** Graphviz's
@@ -344,8 +342,8 @@ The density-based replacement baseline is itself weak on sparse/large
 graphs, since density isn't constant across generators or graph sizes.
 Decided to report this as-is (a real, defensible finding) rather than
 spend remaining time engineering a better heuristic (e.g. a linear-in-`n`
-fit per generator) — the deadline doesn't leave slack for further baseline
-work, and the current result already supports the core narrative.
+fit per generator) — the remaining time doesn't leave slack for further
+baseline work, and the current result already supports the core narrative.
 
 ### Next
 
@@ -431,9 +429,9 @@ or rerunning a single training step.
   selectbox switcher, and ground-truth validation for dataset images (looks
   up `labels_processed.csv` by filename stem and renders a prediction vs.
   truth table when the image is from the known dataset).
-- Created `report/FINAL_REPORT.md`: header-only skeleton matching the exact
-  Task I submission structure, with a literal file-index appendix pointing at
-  every figure and result CSV produced across all three phases.
+- Created `report/FINAL_REPORT.md`: header-only skeleton matching the
+  planned final-report structure, with a literal file-index appendix
+  pointing at every figure and result CSV produced across all three phases.
 
 ### How
 
@@ -822,7 +820,7 @@ that no script reads `dataset.synthetic.*` at runtime, so this was dead
 but misleading documentation, not a live bug. Fixed the value to `[5, 100]`
 and added clarifying header comments to both files rather than a full
 single-source-of-truth rewrite (Option A, not Option B — deemed the safer
-choice this close to the deadline).
+choice at this stage of the project).
 
 **4. Checkpoints tracked despite .gitignore (false).** `git ls-files
 models/checkpoints/` returned only `.gitkeep`. The audit's claim didn't
@@ -862,7 +860,7 @@ non-issues, one fixed with a scoped/lighter approach than proposed).
 
 ### Goal
 
-Conduct a thorough health check across all project subdirectories (`app/`, `data/`, `evaluation/`, `models/`, `render/`) and configuration files to identify hidden runtime risks, stale documentation/labels, or unsafe loading patterns prior to final submission.
+Conduct a thorough health check across all project subdirectories (`app/`, `data/`, `evaluation/`, `models/`, `render/`) and configuration files to identify hidden runtime risks, stale documentation/labels, or unsafe loading patterns.
 
 ### What was done
 
@@ -888,7 +886,7 @@ None blocking. All core model evaluation scripts, Streamlit frontend views, and 
 
 ### Next
 
-Project implementation and code verification are complete. Ready for submission and final documentation hand-off.
+Project implementation and code verification are complete.
 
 ## Day 11 and 12 — 24 and 25 Jul 2026 — LaTeX Report Expansion to Full Paper Structure
 
@@ -943,7 +941,7 @@ repo.
 - **Why does this matter?** If the committed PDF had genuinely been stale
   (missing sections, or `\ref`s showing wrong numbers after new chapters
   were inserted before existing ones), it would have been the version
-  actually handed to a supervisor — a silent, easy-to-miss error.
+  actually shared or presented — a silent, easy-to-miss error.
 
 ### Issues
 
@@ -955,7 +953,7 @@ behind the final PDF; this has no effect on the PDF itself and is cosmetic.
 
 ### Next
 
-Two open, non-blocking decisions before final submission:
+Two open, non-blocking decisions:
 
 1. Whether to backport the new sections (Related Work, Model Cards, Broader
    Impact, Reproducibility Statement, Acknowledgments, References) into
